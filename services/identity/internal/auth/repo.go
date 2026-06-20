@@ -18,6 +18,7 @@ type UserRepository interface {
 	GetPasswordResetToken(ctx context.Context, token string) (userID uuid.UUID, expiresAt time.Time, usedAt *time.Time, err error)
 	MarkPasswordResetTokenUsed(ctx context.Context, token string) error
 	UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error
+	UpdateEmail(ctx context.Context, userID uuid.UUID, email string) error
 	GetUserRolesAndPermissions(ctx context.Context, userID uuid.UUID) (roles []string, perms []string, err error)
 }
 

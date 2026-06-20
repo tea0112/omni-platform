@@ -95,6 +95,17 @@ func (r *AuthPGRepository) UpdatePassword(ctx context.Context, userID uuid.UUID,
 	return nil
 }
 
+func (r *AuthPGRepository) UpdateEmail(ctx context.Context, userID uuid.UUID, email string) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE users SET email = $1, email_verified = false, updated_at = now() WHERE id = $2`,
+		email, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("update email: %w", err)
+	}
+	return nil
+}
+
 func (r *AuthPGRepository) GetUserRolesAndPermissions(ctx context.Context, userID uuid.UUID) ([]string, []string, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT r.name, rp.permission

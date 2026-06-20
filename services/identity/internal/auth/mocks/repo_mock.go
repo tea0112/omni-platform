@@ -149,6 +149,20 @@ func (mr *MockUserRepositoryMockRecorder) MarkPasswordResetTokenUsed(ctx, token 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkPasswordResetTokenUsed", reflect.TypeOf((*MockUserRepository)(nil).MarkPasswordResetTokenUsed), ctx, token)
 }
 
+// UpdateEmail mocks base method.
+func (m *MockUserRepository) UpdateEmail(ctx context.Context, userID uuid.UUID, email string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateEmail", ctx, userID, email)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateEmail indicates an expected call of UpdateEmail.
+func (mr *MockUserRepositoryMockRecorder) UpdateEmail(ctx, userID, email any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEmail", reflect.TypeOf((*MockUserRepository)(nil).UpdateEmail), ctx, userID, email)
+}
+
 // UpdatePassword mocks base method.
 func (m *MockUserRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error {
 	m.ctrl.T.Helper()
