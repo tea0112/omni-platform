@@ -10,17 +10,17 @@ import (
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	p, ok := shared.GetPrincipal(r.Context())
 	if !ok {
-		writeErr(w, shared.ErrUnauthenticated)
+		shared.WriteErr(w, shared.ErrUnauthenticated)
 		return
 	}
 	userID, err := uuid.Parse(p.UserID)
 	if err != nil {
-		writeErr(w, &shared.ValidationError{Fields: map[string]string{"user_id": "invalid uuid"}})
+		shared.WriteErr(w, &shared.ValidationError{Fields: map[string]string{"user_id": "invalid uuid"}})
 		return
 	}
 	if err := h.svc.Logout(r.Context(), userID); err != nil {
-		writeErr(w, err)
+		shared.WriteErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+	shared.WriteJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 }

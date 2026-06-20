@@ -3,6 +3,8 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
 type registerRequest struct {
@@ -13,13 +15,13 @@ type registerRequest struct {
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	var req registerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, err)
+		shared.WriteErr(w, err)
 		return
 	}
 	user, err := h.svc.Register(r.Context(), req.Email, req.Password)
 	if err != nil {
-		writeErr(w, err)
+		shared.WriteErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusCreated, user)
+	shared.WriteJSON(w, http.StatusCreated, user)
 }

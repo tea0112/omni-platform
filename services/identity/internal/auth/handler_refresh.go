@@ -3,6 +3,8 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
 type refreshRequest struct {
@@ -12,14 +14,14 @@ type refreshRequest struct {
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	var req refreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, err)
+		shared.WriteErr(w, err)
 		return
 	}
 	ip := r.RemoteAddr
 	result, err := h.svc.Refresh(r.Context(), req.RefreshToken, ip, nil)
 	if err != nil {
-		writeErr(w, err)
+		shared.WriteErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	shared.WriteJSON(w, http.StatusOK, result)
 }

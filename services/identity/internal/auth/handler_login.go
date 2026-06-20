@@ -3,6 +3,8 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+
+	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
 type loginRequest struct {
@@ -13,14 +15,14 @@ type loginRequest struct {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	var req loginRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeErr(w, err)
+		shared.WriteErr(w, err)
 		return
 	}
 	ip := r.RemoteAddr
 	result, err := h.svc.Login(r.Context(), req.Email, req.Password, ip, nil)
 	if err != nil {
-		writeErr(w, err)
+		shared.WriteErr(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, result)
+	shared.WriteJSON(w, http.StatusOK, result)
 }

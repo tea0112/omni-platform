@@ -37,7 +37,7 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress stri
 	}
 
 	refreshToken := uuid.Must(uuid.NewV7()).String()
-	_, err = s.sessionRepo.CreateSession(ctx, user.ID, refreshToken, deviceInfo, ipAddress, time.Now().Add(30*24*time.Hour))
+	_, err = s.sessionRepo.CreateSession(ctx, user.ID, refreshToken, deviceInfo, ipAddress, time.Now().Add(s.refreshTokenTTL))
 	if err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
 	}

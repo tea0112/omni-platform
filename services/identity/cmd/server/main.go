@@ -23,8 +23,9 @@ import (
 )
 
 type GrpcHandlerPair struct {
-	Path    string
-	Handler http.Handler
+	Path     string
+	Handler  http.Handler
+	SkipAuth bool
 }
 
 func main() {
@@ -35,6 +36,7 @@ func main() {
 			NewPasswordHasherFromConfig,
 			shared.NewRBAC,
 			NewTokenServiceFromConfig,
+			NewRefreshTokenTTL,
 			NewEmailSenderFromConfig,
 			NewDBPoolFromConfig,
 			NewTracerProviderFromConfig,
@@ -52,7 +54,7 @@ func main() {
 			role.NewHandler,
 			fx.Annotated{Group: "grpc-handlers", Target: func(svc *auth.AuthService) GrpcHandlerPair {
 				p, h := auth.NewAuthGrpcHandler(svc)
-				return GrpcHandlerPair{Path: p, Handler: h}
+				return GrpcHandlerPair{Path: p, Handler: h, SkipAuth: true}
 			}},
 			fx.Annotated{Group: "grpc-handlers", Target: func(svc *user.UserService) GrpcHandlerPair {
 				p, h := user.NewUserGrpcHandler(svc)
@@ -86,6 +88,10 @@ func NewTokenServiceFromConfig(cfg shared.Config) *shared.TokenService {
 	return shared.NewTokenService(cfg.Auth.JWTPrivateKey, cfg.Auth.JWTPublicKey, cfg.Auth.AccessTokenTTL)
 }
 
+func NewRefreshTokenTTL(cfg shared.Config) time.Duration {
+	return cfg.Auth.RefreshTokenTTL
+}
+
 func NewEmailSenderFromConfig(cfg shared.Config, logger *slog.Logger) shared.EmailSender {
 	if cfg.Email.Provider == "smtp" {
 		return shared.NewSMTPEmailSender(cfg.Email.SMTP)
@@ -101,10 +107,8 @@ func NewTracerProviderFromConfig(ctx context.Context, cfg shared.Config) (*sdktr
 	return shared.NewTracerProvider(ctx, cfg.OTEL.Endpoint)
 }
 
-func RunMigrations(cfg shared.Config) {
-	if err := shared.RunMigrations(cfg.DB.DSN()); err != nil {
-		slog.Warn("migrations", "error", err)
-	}
+func RunMigrations(cfg shared.Config) error {
+	return shared.RunMigrations(cfg.DB.DSN())
 }
 
 func Serve(lc fx.Lifecycle, cfg shared.Config, authHandler *auth.Handler, userHandler *user.Handler, sessionHandler *session.Handler, roleHandler *role.Handler, grpcHandlers []GrpcHandlerPair, tokenSvc *shared.TokenService, tp *sdktrace.TracerProvider) {
@@ -129,8 +133,13 @@ func Serve(lc fx.Lifecycle, cfg shared.Config, authHandler *auth.Handler, userHa
 		roleHandler.RegisterRoutes(r)
 	})
 
+	authMiddleware := shared.Authenticate(tokenSvc)
 	for _, gh := range grpcHandlers {
-		mux.Handle(gh.Path, gh.Handler)
+		h := gh.Handler
+		if !gh.SkipAuth {
+			h = authMiddleware(h)
+		}
+		mux.Handle(gh.Path, h)
 	}
 
 	srv := &http.Server{

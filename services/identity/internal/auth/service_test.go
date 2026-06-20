@@ -31,7 +31,7 @@ func setupMocks(t *testing.T) (*mocks.MockUserRepository, *mocks.MockSessionRepo
 	userRepo := mocks.NewMockUserRepository(ctrl)
 	sessionRepo := mocks.NewMockSessionRepository(ctrl)
 	hasher := shared.NewPasswordHasher(4)
-	svc := auth.NewAuthService(userRepo, sessionRepo, hasher, nil, shared.NewRBAC(), &mockEmailSender{})
+	svc := auth.NewAuthService(userRepo, sessionRepo, hasher, nil, shared.NewRBAC(), &mockEmailSender{}, 30*24*time.Hour)
 	return userRepo, sessionRepo, hasher, svc
 }
 
@@ -45,7 +45,7 @@ func setupMocksWithToken(t *testing.T) (*mocks.MockUserRepository, *mocks.MockSe
 	hasher := shared.NewPasswordHasher(4)
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	tokenSvc := shared.NewTokenService(priv, pub, 15*time.Minute)
-	svc := auth.NewAuthService(userRepo, sessionRepo, hasher, tokenSvc, shared.NewRBAC(), &mockEmailSender{})
+	svc := auth.NewAuthService(userRepo, sessionRepo, hasher, tokenSvc, shared.NewRBAC(), &mockEmailSender{}, 30*24*time.Hour)
 	return userRepo, sessionRepo, hasher, svc
 }
 
