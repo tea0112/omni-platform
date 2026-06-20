@@ -1,0 +1,46 @@
+services:
+  identity-postgres:
+    image: postgres:18.4
+    container_name: identity-postgres
+    environment:
+      POSTGRES_USER: identity
+      POSTGRES_PASSWORD: identity
+      POSTGRES_DB: identity
+    ports: ["5432:5432"]
+    volumes: ["identity-pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "identity"]
+      interval: 5s
+
+  identity-migrate:
+    build: .
+    container_name: identity-migrate
+    command: ["/bin/server", "migrate"]
+    environment:
+      IDENTITY_DB_HOST: identity-postgres
+      IDENTITY_DB_USER: identity
+      IDENTITY_DB_PASSWORD: identity
+      IDENTITY_DB_NAME: identity
+      IDENTITY_DB_PORT: "5432"
+    depends_on:
+      identity-postgres:
+        condition: service_healthy
+
+  identity-server:
+    build: .
+    container_name: identity-server
+    ports: ["8080:8080"]
+    environment:
+      IDENTITY_DB_HOST: identity-postgres
+      IDENTITY_DB_USER: identity
+      IDENTITY_DB_PASSWORD: identity
+      IDENTITY_DB_NAME: identity
+      IDENTITY_DB_PORT: "5432"
+      IDENTITY_EMAIL_PROVIDER: log
+      IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK: ${IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK}
+    depends_on:
+      identity-migrate:
+        condition: service_completed_successfully
+
+volumes:
+  identity-pgdata:
