@@ -18,7 +18,7 @@ Service Layer (AuthSvc, UserSvc, SessionSvc, RoleSvc)
 Repository Layer (UserRepo, SessionRepo, RoleRepo)
     │
     ▼
-CockroachDB
+PostgreSQL 18.4
 ```
 
 Single `http.Server` on :8080. Chi router mounts REST handlers at `/api/v1/*` and connect-go mounts gRPC handlers at `/grpc.v1.*/*`. OTEL, slog, auth, rate-limiting middleware wraps once for all handlers.
@@ -33,7 +33,7 @@ RBAC at the service layer — transport only handles authentication (extracting 
 
 ## Data Model
 
-Six tables, all UUID primary keys (CockroachDB-compatible):
+Six tables, all UUID primary keys:
 
 - **users**: id, email (unique), password_hash, display_name, email_verified, created_at, updated_at
 - **sessions**: id, user_id (FK), refresh_token (unique, opaque UUID), device_info (JSONB), ip_address, expires_at, revoked_at (nullable), created_at
@@ -140,14 +140,14 @@ services/identity/
 │       └── v1/
 │           └── service.proto
 ├── Dockerfile
-├── docker-compose.yml           ← identity + cockroachdb + migrate
+├── docker-compose.yml           ← identity + postgres + migrate
 ├── go.mod                       ← Independent Go module
 └── go.sum
 ```
 
 Root `docker-compose.yml` handles cross-cutting infra only (OTEL collector).
 
-Each container is named with service prefix: `identity-crdb`, `identity-server`, `identity-migrate` — for easy identification in Podman dashboard.
+Each container is named with service prefix: `identity-postgres`, `identity-server`, `identity-migrate` — for easy identification in Podman dashboard.
 
 ## Error Handling
 
@@ -188,7 +188,7 @@ Interfaces defined in `service/interfaces.go`. Mocks generated via `go:generate 
 
 ### Integration Tests (testcontainers-go)
 
-Real CockroachDB spun up via testcontainers. Repo layer tested against real DB. Service + real repo tested together.
+Real PostgreSQL spun up via testcontainers. Repo layer tested against real DB. Service + real repo tested together.
 
 ### E2E Tests
 
@@ -250,7 +250,7 @@ Docker Compose sets `IDENTITY_EMAIL_PROVIDER=log` locally.
 | `github.com/go-chi/chi/v5` | HTTP routing |
 | `github.com/connectrpc/connect-go` | gRPC/Connect handler + client |
 | `go.uber.org/fx` | Dependency injection |
-| `github.com/jackc/pgx/v5` | PostgreSQL/CockroachDB driver |
+| `github.com/jackc/pgx/v5` | PostgreSQL driver |
 | `github.com/golang-migrate/migrate/v4` | Schema migrations |
 | `github.com/golang-jwt/jwt/v5` | JWT signing/verification |
 | `github.com/spf13/viper` | Configuration |
@@ -270,16 +270,39 @@ Multi-stage, distroless. `CGO_ENABLED=0`, runs as non-root.
 
 ```yaml
 services:
-  identity-crdb:
-    image: cockroachdb/cockroach:latest
-    command: start-single-node --insecure
+  identity-postgres:
+    image: postgres:18.4
+    environment:
+      POSTGRES_USER: identity
+      POSTGRES_PASSWORD: identity
+      POSTGRES_DB: identity
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "identity"]
+      interval: 5s
   identity-migrate:
-    build: . ; command: ["/bin/server", "migrate"]
-    depends_on: identity-crdb (healthy)
+    build: .
+    command: ["/bin/server", "migrate"]
+    depends_on:
+      identity-postgres:
+        condition: service_healthy
   identity-server:
-    build: . ; ports: ["8080:8080"]
-    environment: IDENTITY_DB_HOST=identity-crdb
-    depends_on: identity-migrate (completed)
+    build: .
+    ports: ["8080:8080"]
+    environment:
+      IDENTITY_DB_HOST: identity-postgres
+      IDENTITY_DB_USER: identity
+      IDENTITY_DB_PASSWORD: identity
+      IDENTITY_DB_NAME: identity
+      IDENTITY_DB_PORT: "5432"
+      IDENTITY_EMAIL_PROVIDER: log
+    depends_on:
+      identity-migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:
 ```
 
 Each future service under `services/<name>/` gets its own compose with its own database.
