@@ -217,6 +217,32 @@ app.Run() // blocks until SIGINT/SIGTERM
 
 FX builds the DAG from constructor signatures. Fails at startup if dependencies are missing or circular. Integration tests swap implementations via `fx.Replace`.
 
+## Email Sending
+
+`EmailSender` interface with two implementations, selected by config:
+
+```go
+type EmailSender interface {
+    SendPasswordReset(ctx context.Context, to, token string) error
+}
+```
+
+- **SMTP** (`email.NewSMTP`) — production, connects to configured SMTP server
+- **Log** (`email.NewLog`) — local dev, prints reset link to slog (no real email sent)
+
+FX wires per environment:
+
+```go
+fx.Provide(func(cfg config.Config, logger *slog.Logger) email.EmailSender {
+    if cfg.Email.Provider == "smtp" {
+        return email.NewSMTP(cfg.Email.SMTP)
+    }
+    return email.NewLog(logger)
+})
+```
+
+Docker Compose sets `IDENTITY_EMAIL_PROVIDER=log` locally.
+
 ## Key Dependencies
 
 | Package | Purpose |
