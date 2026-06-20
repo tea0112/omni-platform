@@ -58,6 +58,20 @@ func (mr *MockUserRepositoryMockRecorder) Create(ctx, email, passwordHash any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockUserRepository)(nil).Create), ctx, email, passwordHash)
 }
 
+// CreatePasswordResetToken mocks base method.
+func (m *MockUserRepository) CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreatePasswordResetToken", ctx, userID, token, expiresAt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreatePasswordResetToken indicates an expected call of CreatePasswordResetToken.
+func (mr *MockUserRepositoryMockRecorder) CreatePasswordResetToken(ctx, userID, token, expiresAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePasswordResetToken", reflect.TypeOf((*MockUserRepository)(nil).CreatePasswordResetToken), ctx, userID, token, expiresAt)
+}
+
 // GetByEmail mocks base method.
 func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*auth.User, error) {
 	m.ctrl.T.Helper()
@@ -86,6 +100,67 @@ func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*auth.U
 func (mr *MockUserRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockUserRepository)(nil).GetByID), ctx, id)
+}
+
+// GetPasswordResetToken mocks base method.
+func (m *MockUserRepository) GetPasswordResetToken(ctx context.Context, token string) (uuid.UUID, time.Time, *time.Time, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPasswordResetToken", ctx, token)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(time.Time)
+	ret2, _ := ret[2].(*time.Time)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// GetPasswordResetToken indicates an expected call of GetPasswordResetToken.
+func (mr *MockUserRepositoryMockRecorder) GetPasswordResetToken(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPasswordResetToken", reflect.TypeOf((*MockUserRepository)(nil).GetPasswordResetToken), ctx, token)
+}
+
+// GetUserRolesAndPermissions mocks base method.
+func (m *MockUserRepository) GetUserRolesAndPermissions(ctx context.Context, userID uuid.UUID) ([]string, []string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUserRolesAndPermissions", ctx, userID)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].([]string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetUserRolesAndPermissions indicates an expected call of GetUserRolesAndPermissions.
+func (mr *MockUserRepositoryMockRecorder) GetUserRolesAndPermissions(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserRolesAndPermissions", reflect.TypeOf((*MockUserRepository)(nil).GetUserRolesAndPermissions), ctx, userID)
+}
+
+// MarkPasswordResetTokenUsed mocks base method.
+func (m *MockUserRepository) MarkPasswordResetTokenUsed(ctx context.Context, token string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkPasswordResetTokenUsed", ctx, token)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MarkPasswordResetTokenUsed indicates an expected call of MarkPasswordResetTokenUsed.
+func (mr *MockUserRepositoryMockRecorder) MarkPasswordResetTokenUsed(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkPasswordResetTokenUsed", reflect.TypeOf((*MockUserRepository)(nil).MarkPasswordResetTokenUsed), ctx, token)
+}
+
+// UpdatePassword mocks base method.
+func (m *MockUserRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdatePassword", ctx, userID, passwordHash)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdatePassword indicates an expected call of UpdatePassword.
+func (mr *MockUserRepositoryMockRecorder) UpdatePassword(ctx, userID, passwordHash any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdatePassword", reflect.TypeOf((*MockUserRepository)(nil).UpdatePassword), ctx, userID, passwordHash)
 }
 
 // MockSessionRepository is a mock of SessionRepository interface.

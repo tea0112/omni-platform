@@ -26,7 +26,10 @@ func (s *AuthService) Login(ctx context.Context, email, password, ipAddress stri
 		return nil, shared.ErrUnauthenticated
 	}
 
-	roles, perms := []string{"user"}, []string{"profile.read", "profile.write"}
+	roles, perms, err := s.userRepo.GetUserRolesAndPermissions(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get roles and permissions: %w", err)
+	}
 
 	accessToken, expiresAt, err := s.tokenSvc.GenerateAccessToken(user.ID.String(), roles, perms)
 	if err != nil {

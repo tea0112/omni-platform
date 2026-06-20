@@ -14,6 +14,11 @@ type UserRepository interface {
 	Create(ctx context.Context, email, passwordHash string) (*User, error)
 	GetByEmail(ctx context.Context, email string) (*User, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*User, error)
+	CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error
+	GetPasswordResetToken(ctx context.Context, token string) (userID uuid.UUID, expiresAt time.Time, usedAt *time.Time, err error)
+	MarkPasswordResetTokenUsed(ctx context.Context, token string) error
+	UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error
+	GetUserRolesAndPermissions(ctx context.Context, userID uuid.UUID) (roles []string, perms []string, err error)
 }
 
 type SessionRepository interface {

@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
@@ -12,7 +11,6 @@ type AuthService struct {
 	tokenSvc    *shared.TokenService
 	rbac        *shared.RBAC
 	emailSender shared.EmailSender
-	pool        *pgxpool.Pool
 }
 
 func NewAuthService(
@@ -22,7 +20,6 @@ func NewAuthService(
 	tokenSvc *shared.TokenService,
 	rbac *shared.RBAC,
 	emailSender shared.EmailSender,
-	pool *pgxpool.Pool,
 ) *AuthService {
 	return &AuthService{
 		userRepo:    userRepo,
@@ -31,6 +28,5 @@ func NewAuthService(
 		tokenSvc:    tokenSvc,
 		rbac:        rbac,
 		emailSender: emailSender,
-		pool:        pool,
 	}
 }

@@ -31,7 +31,11 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken, ipAddress strin
 		return nil, fmt.Errorf("get user: %w", err)
 	}
 
-	roles, perms := []string{"user"}, []string{"profile.read", "profile.write"}
+	roles, perms, err := s.userRepo.GetUserRolesAndPermissions(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get roles and permissions: %w", err)
+	}
+
 	accessToken, expiresAt, err := s.tokenSvc.GenerateAccessToken(user.ID.String(), roles, perms)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
