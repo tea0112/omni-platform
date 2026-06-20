@@ -47,6 +47,7 @@ Six tables, all UUID primary keys (CockroachDB-compatible):
 - Access tokens: stateless JWTs (15min TTL), signed with Ed25519, contain `sub`, `roles`, `permissions`
 - Refresh tokens: opaque UUIDs in sessions table (28 day TTL), rotated on every use (old revoked, new issued)
 - Revocation: delete/revoke session row — instant, no deny list needed
+- Token reuse detection: if a revoked refresh token is presented, all sessions for that user are immediately revoked (assumed compromised)
 
 ## API Surface
 
@@ -56,8 +57,8 @@ Six tables, all UUID primary keys (CockroachDB-compatible):
 - `POST /auth/register` — create account
 - `POST /auth/login` — returns access + refresh tokens
 - `POST /auth/refresh` — rotate refresh token, return new pair
-- `POST /auth/forgot-password` — sends reset email
-- `POST /auth/reset-password` — consumes reset token + new password
+- `POST /auth/forgot-password` — generates reset token, sends email via `EmailSender` interface (default: SMTP)
+- `POST /auth/reset-password` — consumes reset token, sets new password
 
 **Auth** (protected):
 - `POST /auth/logout` — revokes session
@@ -128,6 +129,8 @@ services/identity/
 │   │   └── middleware.go        ← Authenticate middleware (extracts principal)
 │   ├── rbac/
 │   │   └── rbac.go              ← Can(ctx, action, resource...) error
+│   ├── email/
+│   │   └── email.go             ← EmailSender interface + SMTP implementation
 │   ├── otel/
 │   │   └── otel.go              ← TracerProvider setup
 │   └── config/
