@@ -1,7 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { api } from "@/lib/api";
+import { api, IdentityError } from "@/lib/api";
 
 type User = {
   id: string;
@@ -19,9 +19,55 @@ type AuthResult = {
   user: User;
 };
 
+type RefreshResult = {
+  access_token: string;
+  refresh_token: string;
+  expires_at: string;
+  user: User;
+};
+
 type ActionResult<T = void> =
   | { success: true; data: T }
   | { success: false; error: string };
+
+const baseUrl = process.env.IDENTITY_SERVICE_URL ?? "http://localhost:8080";
+
+async function refreshToken(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const refreshTokenValue = cookieStore.get("refresh_token")?.value;
+    if (!refreshTokenValue) return null;
+
+    const response = await fetch(`${baseUrl}/api/v1/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshTokenValue }),
+    });
+
+    if (!response.ok) return null;
+
+    const data: RefreshResult = await response.json();
+
+    cookieStore.set("token", data.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 15 * 60,
+    });
+    cookieStore.set("refresh_token", data.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 28 * 24 * 60 * 60,
+    });
+
+    return data.access_token;
+  } catch {
+    return null;
+  }
+}
 
 export async function register(
   email: string,
@@ -99,7 +145,7 @@ export async function login(
 export async function logout(): Promise<ActionResult> {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("token")?.value;
+    let token = cookieStore.get("token")?.value;
 
     if (token) {
       try {
@@ -107,7 +153,20 @@ export async function logout(): Promise<ActionResult> {
           method: "POST",
           token,
         });
-      } catch {
+      } catch (err) {
+        if (err instanceof IdentityError && err.code.startsWith("token_")) {
+          const newToken = await refreshToken();
+          if (newToken) {
+            try {
+              await api("/api/v1/auth/logout", {
+                method: "POST",
+                token: newToken,
+              });
+            } catch {
+              // Logout best-effort — still clear cookies
+            }
+          }
+        }
         // Logout best-effort — still clear cookies
       }
     }
