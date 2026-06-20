@@ -44,6 +44,11 @@ type ChangePasswordInput struct {
 	NewPassword     string
 }
 
+type ChangeEmailInput struct {
+	CurrentPassword string
+	NewEmail        string
+}
+
 type PasswordResetToken struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
