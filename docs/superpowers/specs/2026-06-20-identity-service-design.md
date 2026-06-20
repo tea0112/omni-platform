@@ -90,51 +90,45 @@ services/identity/
 │   └── server/
 │       └── main.go              ← FX-based entrypoint
 ├── internal/
-│   ├── transport/
-│   │   ├── rest/
-│   │   │   ├── handler.go       ← chi route setup + handler structs
-│   │   │   ├── auth.go
-│   │   │   ├── user.go
-│   │   │   ├── session.go
-│   │   │   └── role.go
-│   │   ├── grpc/
-│   │   │   ├── auth.go          ← connect-go handler
-│   │   │   ├── user.go
-│   │   │   ├── session.go
-│   │   │   └── role.go
-│   │   └── errors.go            ← MapError (transport edge only)
-│   ├── service/
-│   │   ├── auth.go              ← AuthService
-│   │   ├── user.go              ← UserService
-│   │   ├── session.go           ← SessionService
-│   │   ├── role.go              ← RoleService
-│   │   └── interfaces.go        ← interfaces + go:generate for mocks
-│   ├── domain/
-│   │   ├── user.go              ← User, Credentials, AuthResult structs
-│   │   ├── session.go
-│   │   ├── role.go
-│   │   └── errors.go            ← Plain sentinel errors (no HTTP/gRPC codes)
-│   ├── repo/
-│   │   ├── user.go              ← UserRepository (pgx)
-│   │   ├── session.go
-│   │   ├── role.go
-│   │   └── migrations/
-│   │       ├── 001_create_users.up.sql
-│   │       ├── 002_create_sessions.up.sql
-│   │       ├── 003_create_roles.up.sql
-│   │       └── 004_create_password_resets.up.sql
 │   ├── auth/
+│   │   ├── handler.go           ← REST endpoints
+│   │   ├── grpc.go              ← connect-go handler
+│   │   ├── service.go           ← AuthService (register, login, refresh, logout)
+│   │   ├── repo.go              ← UserRepository, SessionRepository (pgx)
+│   │   └── domain.go            ← Credentials, AuthResult types
+│   ├── user/
+│   │   ├── handler.go           ← REST endpoints
+│   │   ├── grpc.go              ← connect-go handler
+│   │   ├── service.go           ← UserService (CRUD)
+│   │   ├── repo.go              ← UserRepository
+│   │   └── domain.go            ← User, UpdateUserRequest types
+│   ├── session/
+│   │   ├── handler.go           ← REST endpoints
+│   │   ├── grpc.go              ← connect-go handler
+│   │   ├── service.go           ← SessionService (list, revoke)
+│   │   ├── repo.go              ← SessionRepository
+│   │   └── domain.go            ← Session type
+│   ├── role/
+│   │   ├── handler.go           ← REST endpoints
+│   │   ├── grpc.go              ← connect-go handler
+│   │   ├── service.go           ← RoleService (CRUD, assign, permissions)
+│   │   ├── repo.go              ← RoleRepository
+│   │   └── domain.go            ← Role, Permission types
+│   ├── shared/
 │   │   ├── jwt.go               ← JWT sign/verify (Ed25519)
 │   │   ├── password.go          ← bcrypt hash/compare
-│   │   └── middleware.go        ← Authenticate middleware (extracts principal)
-│   ├── rbac/
-│   │   └── rbac.go              ← Can(ctx, action, resource...) error
-│   ├── email/
-│   │   └── email.go             ← EmailSender interface + SMTP implementation
-│   ├── otel/
-│   │   └── otel.go              ← TracerProvider setup
-│   └── config/
-│       └── config.go            ← Viper-based, validated at startup
+│   │   ├── rbac.go              ← Can(ctx, action, resource...) error
+│   │   ├── middleware.go         ← Authenticate middleware (extracts principal)
+│   │   ├── email.go             ← EmailSender interface + SMTP + Log implementations
+│   │   ├── errors.go            ← Plain sentinel errors + MapError
+│   │   ├── otel.go              ← TracerProvider setup
+│   │   └── config.go            ← Viper-based, validated at startup
+│   └── repo/
+│       └── migrations/
+│           ├── 001_create_users.up.sql
+│           ├── 002_create_sessions.up.sql
+│           ├── 003_create_roles.up.sql
+│           └── 004_create_password_resets.up.sql
 ├── proto/
 │   └── identity/
 │       └── v1/
@@ -184,7 +178,7 @@ Service layer never sees HTTP/gRPC codes. Handlers call `MapError` and write the
 
 ### Unit Tests (Uber GoMock)
 
-Interfaces defined in `service/interfaces.go`. Mocks generated via `go:generate mockgen` into `service/mocks/`. Service methods tested with mocked repos and RBAC.
+Interfaces defined alongside service files (e.g., `auth/service.go`). Mocks generated via `go:generate mockgen` into each feature package under `mocks/`. Service methods tested with mocked repos and RBAC.
 
 ### Integration Tests (testcontainers-go)
 
