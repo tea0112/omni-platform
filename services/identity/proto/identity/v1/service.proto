@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package identity.v1;
+
+option go_package = "github.com/tea0112/omni-platform/services/identity/gen/identity/v1;identityv1";
+
+service AuthService {
+  rpc Register(RegisterRequest) returns (RegisterResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Refresh(RefreshRequest) returns (RefreshResponse);
+  rpc Logout(LogoutRequest) returns (LogoutResponse);
+}
+
+message RegisterRequest { string email = 1; string password = 2; }
+message RegisterResponse { string user_id = 1; string email = 2; }
+message LoginRequest { string email = 1; string password = 2; }
+message LoginResponse { string access_token = 1; string refresh_token = 2; int64 expires_at = 3; }
+message RefreshRequest { string refresh_token = 1; }
+message RefreshResponse { string access_token = 1; string refresh_token = 2; int64 expires_at = 3; }
+message LogoutRequest { string session_id = 1; }
+message LogoutResponse {}
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+}
+
+message GetUserRequest { string user_id = 1; }
+message GetUserResponse { string user_id = 1; string email = 2; string display_name = 3; }
+message UpdateUserRequest { string user_id = 1; optional string display_name = 2; }
+message UpdateUserResponse { string user_id = 1; string email = 2; string display_name = 3; }
+message ListUsersRequest { int32 offset = 1; int32 limit = 2; }
+message ListUsersResponse { repeated GetUserResponse users = 1; }
+
+service SessionService {
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+}
+
+message ListSessionsRequest { string user_id = 1; }
+message SessionInfo {
+  string session_id = 1; string user_id = 2; string ip_address = 3;
+  int64 expires_at = 4; int64 created_at = 5;
+}
+message ListSessionsResponse { repeated SessionInfo sessions = 1; }
+message RevokeSessionRequest { string session_id = 1; }
+message RevokeSessionResponse {}
+
+service RoleService {
+  rpc CreateRole(CreateRoleRequest) returns (RoleResponse);
+  rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
+  rpc DeleteRole(DeleteRoleRequest) returns (DeleteRoleResponse);
+  rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
+}
+
+message CreateRoleRequest { string name = 1; string description = 2; }
+message RoleResponse { string role_id = 1; string name = 2; string description = 3; }
+message ListRolesRequest {}
+message ListRolesResponse { repeated RoleResponse roles = 1; }
+message DeleteRoleRequest { string role_id = 1; }
+message DeleteRoleResponse {}
+message AssignRoleRequest { string user_id = 1; string role_id = 2; }
+message AssignRoleResponse {}
