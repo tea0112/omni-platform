@@ -17,6 +17,10 @@ func NewHandler(svc *AuthService) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
+	r.Post("/auth/register", h.Register)
+	r.Post("/auth/login", h.Login)
+	r.Post("/auth/refresh", h.Refresh)
+	r.Post("/auth/logout", h.Logout)
 	r.Post("/auth/forgot-password", h.ForgotPassword)
 	r.Post("/auth/reset-password", h.ResetPassword)
 }
