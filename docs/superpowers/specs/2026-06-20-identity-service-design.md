@@ -33,7 +33,7 @@ RBAC at the service layer — transport only handles authentication (extracting 
 
 ## Data Model
 
-Six tables, all UUID primary keys:
+Six tables, all UUID v7 primary keys (time-ordered, index-friendly, generated at application layer):
 
 - **users**: id, email (unique), password_hash, display_name, email_verified, created_at, updated_at
 - **sessions**: id, user_id (FK), refresh_token (unique, opaque UUID), device_info (JSONB), ip_address, expires_at, revoked_at (nullable), created_at
@@ -258,6 +258,7 @@ Docker Compose sets `IDENTITY_EMAIL_PROVIDER=log` locally.
 | `go.uber.org/mock` | Mock generation |
 | `github.com/testcontainers/testcontainers-go` | Integration test infra |
 | `github.com/stretchr/testify` | Test assertions |
+| `github.com/google/uuid` | UUID v7 generation |
 | `golang.org/x/crypto` | bcrypt |
 
 ## Deployable
