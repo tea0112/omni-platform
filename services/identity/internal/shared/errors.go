@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"connectrpc.com/connect"
 	"google.golang.org/grpc/codes"
 )
 
@@ -65,4 +66,9 @@ func fieldsToAny(m map[string]string) map[string]any {
 
 func errBody(code, message string) map[string]any {
 	return map[string]any{"code": code, "message": message}
+}
+
+func AsConnectError(err error) *connect.Error {
+	_, grpcCode, _ := MapError(err)
+	return connect.NewError(connect.Code(grpcCode), err)
 }
