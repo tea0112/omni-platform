@@ -39,6 +39,11 @@ type AuthResult struct {
 	User         User
 }
 
+type ChangePasswordInput struct {
+	CurrentPassword string
+	NewPassword     string
+}
+
 type PasswordResetToken struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
