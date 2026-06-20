@@ -91,44 +91,66 @@ services/identity/
 │       └── main.go              ← FX-based entrypoint
 ├── internal/
 │   ├── auth/
-│   │   ├── handler.go           ← REST endpoints
+│   │   ├── handler.go           ← route setup
+│   │   ├── handler_register.go  ← POST /auth/register
+│   │   ├── handler_login.go     ← POST /auth/login
+│   │   ├── handler_refresh.go   ← POST /auth/refresh
+│   │   ├── handler_logout.go    ← POST /auth/logout
 │   │   ├── grpc.go              ← connect-go handler
-│   │   ├── service.go           ← AuthService (register, login, refresh, logout)
-│   │   ├── repo.go              ← UserRepository, SessionRepository (pgx)
-│   │   └── domain.go            ← Credentials, AuthResult types
+│   │   ├── service.go           ← AuthService public API
+│   │   ├── service_register.go  ← register logic
+│   │   ├── service_login.go     ← login logic
+│   │   ├── service_refresh.go   ← token refresh + rotation
+│   │   ├── repo.go              ← repository interface
+│   │   ├── repo_user.go         ← user queries
+│   │   ├── repo_session.go      ← session queries
+│   │   ├── domain.go            ← Credentials, AuthResult types
+│   │   └── mocks/
 │   ├── user/
-│   │   ├── handler.go           ← REST endpoints
-│   │   ├── grpc.go              ← connect-go handler
-│   │   ├── service.go           ← UserService (CRUD)
-│   │   ├── repo.go              ← UserRepository
-│   │   └── domain.go            ← User, UpdateUserRequest types
+│   │   ├── handler.go
+│   │   ├── handler_get.go
+│   │   ├── handler_update.go
+│   │   ├── handler_list.go
+│   │   ├── grpc.go
+│   │   ├── service.go
+│   │   ├── repo.go
+│   │   ├── domain.go
+│   │   └── mocks/
 │   ├── session/
-│   │   ├── handler.go           ← REST endpoints
-│   │   ├── grpc.go              ← connect-go handler
-│   │   ├── service.go           ← SessionService (list, revoke)
-│   │   ├── repo.go              ← SessionRepository
-│   │   └── domain.go            ← Session type
+│   │   ├── handler.go
+│   │   ├── handler_list.go
+│   │   ├── handler_revoke.go
+│   │   ├── grpc.go
+│   │   ├── service.go
+│   │   ├── repo.go
+│   │   ├── domain.go
+│   │   └── mocks/
 │   ├── role/
-│   │   ├── handler.go           ← REST endpoints
-│   │   ├── grpc.go              ← connect-go handler
-│   │   ├── service.go           ← RoleService (CRUD, assign, permissions)
-│   │   ├── repo.go              ← RoleRepository
-│   │   └── domain.go            ← Role, Permission types
+│   │   ├── handler.go
+│   │   ├── handler_crud.go      ← GET/POST/DELETE roles
+│   │   ├── handler_permission.go ← role permission management
+│   │   ├── handler_assign.go    ← assign/remove role to user
+│   │   ├── grpc.go
+│   │   ├── service.go
+│   │   ├── repo.go
+│   │   ├── domain.go
+│   │   └── mocks/
 │   ├── shared/
 │   │   ├── jwt.go               ← JWT sign/verify (Ed25519)
 │   │   ├── password.go          ← bcrypt hash/compare
 │   │   ├── rbac.go              ← Can(ctx, action, resource...) error
-│   │   ├── middleware.go         ← Authenticate middleware (extracts principal)
-│   │   ├── email.go             ← EmailSender interface + SMTP + Log implementations
-│   │   ├── errors.go            ← Plain sentinel errors + MapError
+│   │   ├── middleware.go         ← Authenticate middleware
+│   │   ├── email.go             ← EmailSender interface
+│   │   ├── email_smtp.go        ← SMTP implementation
+│   │   ├── email_log.go         ← slog implementation
+│   │   ├── errors.go            ← sentinel errors + MapError
 │   │   ├── otel.go              ← TracerProvider setup
 │   │   └── config.go            ← Viper-based, validated at startup
-│   └── repo/
-│       └── migrations/
-│           ├── 001_create_users.up.sql
-│           ├── 002_create_sessions.up.sql
-│           ├── 003_create_roles.up.sql
-│           └── 004_create_password_resets.up.sql
+│   └── migrations/
+│       ├── 001_create_users.up.sql
+│       ├── 002_create_sessions.up.sql
+│       ├── 003_create_roles.up.sql
+│       └── 004_create_password_resets.up.sql
 ├── proto/
 │   └── identity/
 │       └── v1/
