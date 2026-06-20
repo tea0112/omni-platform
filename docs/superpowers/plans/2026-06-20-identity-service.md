@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status:** Complete — 36 commits, 25 tests passing, go vet clean, build succeeds (2026-06-20)
+
 **Goal:** Build a Go User Management API with email/password auth, session management with refresh tokens, and RBAC — exposed over REST (chi) and gRPC (connect-go) on a single port, backed by PostgreSQL 18.4.
 
 **Architecture:** Layered monolith organized by feature (`auth/`, `user/`, `session/`, `role/`, `shared/`). Each feature owns its handler, gRPC adapter, service, repo, and domain types. Cross-cutting concerns in `shared/`. Uber FX for DI, Uber GoMock for mocks, Viper for config, pgx for database.
