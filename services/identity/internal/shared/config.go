@@ -43,14 +43,6 @@ type OTELConfig struct {
 	Endpoint string
 }
 
-type SMTPConfig struct {
-	Host     string
-	Port     int
-	Username string
-	Password string
-	From     string
-}
-
 type EmailConfig struct {
 	Provider string
 	SMTP     SMTPConfig
