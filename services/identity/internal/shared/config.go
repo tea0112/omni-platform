@@ -1,12 +1,12 @@
 package shared
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"strings"
 	"time"
 
@@ -116,12 +116,12 @@ func MustLoad() Config {
 	jwkJSON := v.GetString("auth.jwt_private_key_jwk")
 	if jwkJSON == "" {
 		slog.Error("IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK is required")
-		os.Exit(1)
+		panic("IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK is required")
 	}
 	priv, pub, err := parseEd25519JWK(jwkJSON)
 	if err != nil {
 		slog.Error("invalid Ed25519 JWK", "error", err)
-		os.Exit(1)
+		panic("invalid Ed25519 JWK")
 	}
 	cfg.Auth.JWTPrivateKey = priv
 	cfg.Auth.JWTPublicKey = pub
@@ -145,5 +145,13 @@ func parseEd25519JWK(jwkJSON string) (ed25519.PrivateKey, ed25519.PublicKey, err
 		return nil, nil, fmt.Errorf("seed must be %d bytes, got %d", ed25519.SeedSize, len(dBytes))
 	}
 	priv := ed25519.NewKeyFromSeed(dBytes)
-	return priv, priv.Public().(ed25519.PublicKey), nil
+	xBytes, err := base64.RawURLEncoding.DecodeString(jwk.X)
+	if err != nil {
+		return nil, nil, fmt.Errorf("decode x: %w", err)
+	}
+	pub := priv.Public().(ed25519.PublicKey)
+	if !bytes.Equal(xBytes, pub) {
+		return nil, nil, fmt.Errorf("public key in JWK does not match seed-derived public key")
+	}
+	return priv, pub, nil
 }

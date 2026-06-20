@@ -1,7 +1,6 @@
 package shared_test
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,9 +8,8 @@ import (
 )
 
 func TestMustLoad_Defaults(t *testing.T) {
-	os.Clearenv()
-	os.Setenv("IDENTITY_DB_HOST", "localhost")
-	os.Setenv("IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK", `{"kty":"OKP","crv":"Ed25519","x":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo","d":"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxzOf2A"}`)
+	t.Setenv("IDENTITY_DB_HOST", "localhost")
+	t.Setenv("IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK", `{"kty":"OKP","crv":"Ed25519","x":"oCBAv07QPyAbbX-NLVPIeMX6e2tlJonlyw8Cb0Ufz3w","d":"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxzOf2A"}`)
 
 	cfg := shared.MustLoad()
 
@@ -23,10 +21,9 @@ func TestMustLoad_Defaults(t *testing.T) {
 }
 
 func TestMustLoad_EnvOverride(t *testing.T) {
-	os.Clearenv()
-	os.Setenv("IDENTITY_DB_PORT", "6432")
-	os.Setenv("IDENTITY_SERVER_PORT", "9090")
-	os.Setenv("IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK", `{"kty":"OKP","crv":"Ed25519","x":"11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo","d":"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxzOf2A"}`)
+	t.Setenv("IDENTITY_DB_PORT", "6432")
+	t.Setenv("IDENTITY_SERVER_PORT", "9090")
+	t.Setenv("IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK", `{"kty":"OKP","crv":"Ed25519","x":"oCBAv07QPyAbbX-NLVPIeMX6e2tlJonlyw8Cb0Ufz3w","d":"nWGxne_9WmC6hEr0kuwsxERJxWl7MmkZcDusAxzOf2A"}`)
 
 	cfg := shared.MustLoad()
 	assert.Equal(t, 6432, cfg.DB.Port)
