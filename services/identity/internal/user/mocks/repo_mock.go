@@ -43,10 +43,10 @@ func (m *MockUserRepository) EXPECT() *MockUserRepositoryMockRecorder {
 }
 
 // GetByID mocks base method.
-func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.UserRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByID", ctx, id)
-	ret0, _ := ret[0].(*user.User)
+	ret0, _ := ret[0].(*user.UserRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -58,10 +58,10 @@ func (mr *MockUserRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
 }
 
 // List mocks base method.
-func (m *MockUserRepository) List(ctx context.Context, offset, limit int) ([]user.User, error) {
+func (m *MockUserRepository) List(ctx context.Context, offset, limit int) ([]user.UserRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx, offset, limit)
-	ret0, _ := ret[0].([]user.User)
+	ret0, _ := ret[0].([]user.UserRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -73,10 +73,10 @@ func (mr *MockUserRepositoryMockRecorder) List(ctx, offset, limit any) *gomock.C
 }
 
 // Update mocks base method.
-func (m *MockUserRepository) Update(ctx context.Context, id uuid.UUID, req user.UpdateUserRequest) (*user.User, error) {
+func (m *MockUserRepository) Update(ctx context.Context, id uuid.UUID, req user.UpdateUserRequest) (*user.UserRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, id, req)
-	ret0, _ := ret[0].(*user.User)
+	ret0, _ := ret[0].(*user.UserRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

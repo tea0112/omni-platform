@@ -28,14 +28,14 @@ func (h *UserGrpcHandler) GetUser(ctx context.Context, req *connect.Request[iden
 	if err != nil {
 		return nil, shared.AsConnectError(&shared.ValidationError{Fields: map[string]string{"user_id": "invalid uuid"}})
 	}
-	user, err := h.svc.GetByID(ctx, id)
+	u, err := h.svc.GetByID(ctx, id)
 	if err != nil {
 		return nil, shared.AsConnectError(err)
 	}
 	return connect.NewResponse(&identityv1.GetUserResponse{
-		UserId:      user.ID.String(),
-		Email:       user.Email,
-		DisplayName: user.DisplayName,
+		UserId:      u.ID.String(),
+		Email:       u.Email,
+		DisplayName: u.DisplayName,
 	}), nil
 }
 
@@ -44,14 +44,14 @@ func (h *UserGrpcHandler) UpdateUser(ctx context.Context, req *connect.Request[i
 	if err != nil {
 		return nil, shared.AsConnectError(&shared.ValidationError{Fields: map[string]string{"user_id": "invalid uuid"}})
 	}
-	user, err := h.svc.Update(ctx, id, UpdateUserRequest{DisplayName: req.Msg.DisplayName})
+	u, err := h.svc.Update(ctx, id, UpdateUserRequest{DisplayName: req.Msg.DisplayName})
 	if err != nil {
 		return nil, shared.AsConnectError(err)
 	}
 	return connect.NewResponse(&identityv1.UpdateUserResponse{
-		UserId:      user.ID.String(),
-		Email:       user.Email,
-		DisplayName: user.DisplayName,
+		UserId:      u.ID.String(),
+		Email:       u.Email,
+		DisplayName: u.DisplayName,
 	}), nil
 }
 
@@ -66,7 +66,8 @@ func (h *UserGrpcHandler) ListUsers(ctx context.Context, req *connect.Request[id
 		return nil, shared.AsConnectError(err)
 	}
 	resp := &identityv1.ListUsersResponse{}
-	for _, u := range users {
+	for i := range users {
+		u := users[i]
 		resp.Users = append(resp.Users, &identityv1.GetUserResponse{
 			UserId:      u.ID.String(),
 			Email:       u.Email,

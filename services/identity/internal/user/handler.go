@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+
+	"github.com/tea0112/omni-platform/services/identity/internal/identityuser"
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
@@ -16,6 +19,34 @@ type Handler struct {
 
 func NewHandler(svc *UserService) *Handler {
 	return &Handler{svc: svc}
+}
+
+type userResponse struct {
+	ID            uuid.UUID `json:"id"`
+	Email         string    `json:"email"`
+	DisplayName   string    `json:"display_name"`
+	EmailVerified bool      `json:"email_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+}
+
+func toUserResponse(u *identityuser.User) userResponse {
+	return userResponse{
+		ID:            u.ID,
+		Email:         u.Email,
+		DisplayName:   u.DisplayName,
+		EmailVerified: u.EmailVerified,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
+	}
+}
+
+type updateUserRequestDTO struct {
+	DisplayName *string `json:"display_name"`
+}
+
+func (d updateUserRequestDTO) toDomain() UpdateUserRequest {
+	return UpdateUserRequest{DisplayName: d.DisplayName}
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
@@ -30,12 +61,12 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, &shared.ValidationError{Fields: map[string]string{"id": "invalid uuid"}})
 		return
 	}
-	user, err := h.svc.GetByID(r.Context(), id)
+	u, err := h.svc.GetByID(r.Context(), id)
 	if err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, user)
+	shared.WriteJSON(w, http.StatusOK, toUserResponse(u))
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
@@ -44,17 +75,17 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, &shared.ValidationError{Fields: map[string]string{"id": "invalid uuid"}})
 		return
 	}
-	var req UpdateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var dto updateUserRequestDTO
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
-	user, err := h.svc.Update(r.Context(), id, req)
+	u, err := h.svc.Update(r.Context(), id, dto.toDomain())
 	if err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, user)
+	shared.WriteJSON(w, http.StatusOK, toUserResponse(u))
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +99,9 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, users)
+	resp := make([]userResponse, len(users))
+	for i, u := range users {
+		resp[i] = toUserResponse(&u)
+	}
+	shared.WriteJSON(w, http.StatusOK, resp)
 }
-
-
