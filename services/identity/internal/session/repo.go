@@ -70,6 +70,9 @@ func (r *SessionPGRepository) GetByUserID(ctx context.Context, userID uuid.UUID)
 		}
 		sessions = append(sessions, s)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate sessions: %w", err)
+	}
 	return sessions, nil
 }
 
