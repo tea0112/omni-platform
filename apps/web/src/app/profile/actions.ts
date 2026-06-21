@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { api, IdentityError } from "@/lib/api";
 
 type User = {
@@ -128,6 +129,7 @@ export async function updateProfile(
       });
     });
 
+    revalidatePath("/profile");
     return { success: true, data };
   } catch (err) {
     const message =

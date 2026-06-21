@@ -17,6 +17,10 @@ func NewUserService(repo UserRepository, rbac *shared.RBAC) *UserService {
 }
 
 func (s *UserService) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
+	p, _ := shared.GetPrincipal(ctx)
+	if p.UserID == id.String() {
+		return s.repo.GetByID(ctx, id)
+	}
 	if err := s.rbac.Can(ctx, "users.read"); err != nil {
 		return nil, err
 	}
@@ -24,6 +28,10 @@ func (s *UserService) GetByID(ctx context.Context, id uuid.UUID) (*User, error) 
 }
 
 func (s *UserService) Update(ctx context.Context, id uuid.UUID, req UpdateUserRequest) (*User, error) {
+	p, _ := shared.GetPrincipal(ctx)
+	if p.UserID == id.String() {
+		return s.repo.Update(ctx, id, req)
+	}
 	if err := s.rbac.Can(ctx, "users.write", id.String()); err != nil {
 		return nil, err
 	}

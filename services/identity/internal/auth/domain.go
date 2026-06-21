@@ -7,36 +7,36 @@ import (
 )
 
 type User struct {
-	ID            uuid.UUID
-	Email         string
-	PasswordHash  string `json:"-"`
-	DisplayName   string
-	EmailVerified bool
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID            uuid.UUID `json:"id"`
+	Email         string    `json:"email"`
+	PasswordHash  string    `json:"-"`
+	DisplayName   string    `json:"display_name"`
+	EmailVerified bool      `json:"email_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 type Session struct {
-	ID           uuid.UUID
-	UserID       uuid.UUID
-	RefreshToken string
-	DeviceInfo   map[string]any
-	IPAddress    string
-	ExpiresAt    time.Time
-	RevokedAt    *time.Time
-	CreatedAt    time.Time
+	ID           uuid.UUID      `json:"id"`
+	UserID       uuid.UUID      `json:"user_id"`
+	RefreshToken string         `json:"-"`
+	DeviceInfo   map[string]any `json:"device_info,omitempty"`
+	IPAddress    string         `json:"ip_address"`
+	ExpiresAt    time.Time      `json:"expires_at"`
+	RevokedAt    *time.Time     `json:"revoked_at,omitempty"`
+	CreatedAt    time.Time      `json:"created_at"`
 }
 
 type Credentials struct {
-	Email    string
-	Password string
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type AuthResult struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresAt    time.Time
-	User         User
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	User         User      `json:"user"`
 }
 
 type ChangePasswordInput struct {
