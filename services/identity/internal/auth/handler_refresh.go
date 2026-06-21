@@ -26,7 +26,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	shared.WriteJSON(w, http.StatusOK, authResponseDTO{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
-		ExpiresAt:    result.ExpiresAt.Unix(),
+		ExpiresAt:    result.ExpiresAt,
 		User: userResponse{
 			ID:            result.User.ID,
 			Email:         result.User.Email,

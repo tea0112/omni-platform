@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
@@ -16,7 +17,7 @@ type loginRequestDTO struct {
 type authResponseDTO struct {
 	AccessToken  string       `json:"access_token"`
 	RefreshToken string       `json:"refresh_token"`
-	ExpiresAt    int64        `json:"expires_at"`
+	ExpiresAt    time.Time    `json:"expires_at"`
 	User         userResponse `json:"user"`
 }
 
@@ -42,7 +43,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	shared.WriteJSON(w, http.StatusOK, authResponseDTO{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
-		ExpiresAt:    result.ExpiresAt.Unix(),
+		ExpiresAt:    result.ExpiresAt,
 		User: userResponse{
 			ID:            result.User.ID,
 			Email:         result.User.Email,
