@@ -1,0 +1,133 @@
+# justfile for the identity service
+# Run `just` (no args) to see all available recipes.
+
+set dotenv-load := true
+set positional-arguments := true
+
+# Variables
+docker  := 'docker compose'
+goflags := '-trimpath'
+
+# Default target: full local stack
+default: dev
+
+# --- Workflows ---
+
+# Bring up the full local stack: db-up → migrate → gen-jwk (if needed) → run
+dev: db-up migrate
+    @if [ ! -f .env.local ]; then just gen-jwk; fi
+    just run
+
+# What CI runs: vet → test → build
+ci: vet test build
+
+# Tear everything down (containers, build artifacts, .env.local)
+reset: db-down clean
+    rm -f .env.local
+
+# --- Database ---
+
+# Start the local Postgres container
+db-up:
+    {{ docker }} up -d identity-postgres
+
+# Stop the local Postgres container
+db-down:
+    {{ docker }} down
+
+# Tail the Postgres logs
+db-logs:
+    {{ docker }} logs -f identity-postgres
+
+# Show container status
+db-ps:
+    {{ docker }} ps
+
+# Wipe the database (volume) and restart. Requires --confirm.
+db-reset:
+    @just --confirm db-down
+    docker volume rm identity-pgdata || true
+    just db-up
+
+# --- Migrations ---
+
+# Apply all up migrations
+migrate:
+    go run ./cmd/server migrate
+
+# Roll back one migration
+migrate-down:
+    go run ./cmd/server migrate down
+
+# --- Secrets ---
+
+# Generate a fresh Ed25519 JWK and write it to .env.local
+gen-jwk:
+    go run ./cmd/server gen-jwk
+
+# --- Tests ---
+
+# Run all tests
+test:
+    go test ./...
+
+# Run unit tests only (skip integration)
+test-unit:
+    go test -short ./...
+
+# Run integration tests (requires db-up)
+test-integration:
+    go test -tags=integration ./...
+
+# Run tests with coverage report
+test-coverage:
+    go test -coverprofile=coverage.out ./...
+    go tool cover -html=coverage.out
+
+# --- Build ---
+
+# Build the server binary
+build:
+    go build {{ goflags }} -o server ./cmd/server
+
+# Run the server (requires build and .env.local)
+run: build
+    ./server
+
+# --- Code quality ---
+
+# Run go vet
+vet:
+    go vet ./...
+
+# Run go fmt
+fmt:
+    go fmt ./...
+
+# Run go generate
+generate:
+    go generate ./...
+
+# Lint placeholder (no linter configured today)
+lint:
+    @echo "no linter configured"
+
+# --- Cleanup ---
+
+# Remove build artifacts
+clean:
+    rm -f server coverage.out
+
+# --- Docker stack ---
+
+# Start the full stack (postgres + migrate + server) via Docker Compose
+docker-up:
+    {{ docker }} up -d
+
+# Stop the full stack
+docker-down:
+    {{ docker }} down
+
+# Tail the full stack logs
+docker-logs:
+    {{ docker }} logs -f
