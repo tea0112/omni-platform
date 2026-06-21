@@ -65,8 +65,8 @@ Common ones:
 ## Run with Docker Compose
 
 ```bash
-export IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK="$(just gen-jwk)"
+just gen-jwk
 just docker-up
 ```
 
-This starts PostgreSQL, runs migrations, and starts the server on `:8080`.
+`just gen-jwk` writes a fresh Ed25519 JWK to `.env.local`. `set dotenv-load := true` (at the top of the justfile) propagates the JWK into the shell environment for every recipe, including `docker-up`. `docker compose` then reads `IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK` from the environment.
