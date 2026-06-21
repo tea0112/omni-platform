@@ -19,16 +19,18 @@ type AuthGrpcHandler struct {
 }
 
 func NewAuthGrpcHandler(svc *AuthService) (string, http.Handler) {
-	handler := &AuthGrpcHandler{svc: svc}
-	return identityv1connect.NewAuthServiceHandler(handler)
+	return identityv1connect.NewAuthServiceHandler(&AuthGrpcHandler{svc: svc})
 }
 
 func (h *AuthGrpcHandler) Register(ctx context.Context, req *connect.Request[identityv1.RegisterRequest]) (*connect.Response[identityv1.RegisterResponse], error) {
-	user, err := h.svc.Register(ctx, req.Msg.Email, req.Msg.Password)
+	creds, err := h.svc.Register(ctx, req.Msg.Email, req.Msg.Password)
 	if err != nil {
 		return nil, shared.AsConnectError(err)
 	}
-	return connect.NewResponse(&identityv1.RegisterResponse{UserId: user.ID.String(), Email: user.Email}), nil
+	return connect.NewResponse(&identityv1.RegisterResponse{
+		UserId: creds.User().ID.String(),
+		Email:  creds.User().Email,
+	}), nil
 }
 
 func (h *AuthGrpcHandler) Login(ctx context.Context, req *connect.Request[identityv1.LoginRequest]) (*connect.Response[identityv1.LoginResponse], error) {

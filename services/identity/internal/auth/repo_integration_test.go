@@ -32,7 +32,7 @@ func TestAuthRepository_CreateAndGetByEmail(t *testing.T) {
 
 	require.NoError(t, migrate.Run(dsn))
 
-	repo := auth.NewAuthRepository(pool)
+	repo := auth.NewAuthUserPGRepository(pool)
 
 	user, err := repo.Create(ctx, "test@example.com", "hashed-password")
 	require.NoError(t, err)

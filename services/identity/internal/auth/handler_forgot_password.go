@@ -7,12 +7,12 @@ import (
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
-type forgotPasswordRequest struct {
+type forgotPasswordRequestDTO struct {
 	Email string `json:"email"`
 }
 
 func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
-	var req forgotPasswordRequest
+	var req forgotPasswordRequestDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.WriteErr(w, err)
 		return

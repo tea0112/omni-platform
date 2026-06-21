@@ -17,7 +17,7 @@ func TestChangePassword_Success(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	currentHash, _ := hasher.Hash("oldpassword")
 
-	userRepo.EXPECT().GetByID(gomock.Any(), userID).Return(&auth.User{
+	userRepo.EXPECT().GetByID(gomock.Any(), userID).Return(&auth.UserCredentialsRow{
 		ID: userID, Email: "a@b.com", PasswordHash: currentHash,
 	}, nil)
 	userRepo.EXPECT().UpdatePassword(gomock.Any(), userID, gomock.Any()).Return(nil)
@@ -31,7 +31,7 @@ func TestChangePassword_WrongCurrent(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	currentHash, _ := hasher.Hash("correct")
 
-	userRepo.EXPECT().GetByID(gomock.Any(), userID).Return(&auth.User{
+	userRepo.EXPECT().GetByID(gomock.Any(), userID).Return(&auth.UserCredentialsRow{
 		ID: userID, Email: "a@b.com", PasswordHash: currentHash,
 	}, nil)
 

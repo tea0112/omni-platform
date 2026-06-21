@@ -6,10 +6,11 @@ import (
 	"net/mail"
 
 	"github.com/google/uuid"
+	"github.com/tea0112/omni-platform/services/identity/internal/identityuser"
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
-func (s *AuthService) ChangeEmail(ctx context.Context, userID uuid.UUID, currentPassword, newEmail string) (*User, error) {
+func (s *AuthService) ChangeEmail(ctx context.Context, userID uuid.UUID, currentPassword, newEmail string) (*identityuser.User, error) {
 	if currentPassword == "" || newEmail == "" {
 		return nil, &shared.ValidationError{Fields: map[string]string{
 			"current_password": "required",
@@ -23,12 +24,13 @@ func (s *AuthService) ChangeEmail(ctx context.Context, userID uuid.UUID, current
 		}}
 	}
 
-	user, err := s.userRepo.GetByID(ctx, userID)
+	row, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get user: %w", err)
 	}
+	creds := row.toDomain()
 
-	if err := s.hasher.Compare(user.PasswordHash, currentPassword); err != nil {
+	if err := s.hasher.Compare(creds.PasswordHash(), currentPassword); err != nil {
 		return nil, shared.ErrUnauthenticated
 	}
 
@@ -36,7 +38,8 @@ func (s *AuthService) ChangeEmail(ctx context.Context, userID uuid.UUID, current
 		return nil, fmt.Errorf("update email: %w", err)
 	}
 
+	user := creds.User()
 	user.Email = newEmail
 
-	return user, nil
+	return &user, nil
 }

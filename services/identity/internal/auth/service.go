@@ -7,18 +7,20 @@ import (
 )
 
 type AuthService struct {
-	userRepo         UserRepository
-	sessionRepo      SessionRepository
-	hasher           *shared.PasswordHasher
-	tokenSvc         *shared.TokenService
-	rbac             *shared.RBAC
-	emailSender      shared.EmailSender
-	refreshTokenTTL  time.Duration
+	userRepo        UserRepository
+	sessionRepo     SessionRepository
+	txr             shared.TxRunner
+	hasher          *shared.PasswordHasher
+	tokenSvc        *shared.TokenService
+	rbac            *shared.RBAC
+	emailSender     shared.EmailSender
+	refreshTokenTTL time.Duration
 }
 
 func NewAuthService(
 	userRepo UserRepository,
 	sessionRepo SessionRepository,
+	txr shared.TxRunner,
 	hasher *shared.PasswordHasher,
 	tokenSvc *shared.TokenService,
 	rbac *shared.RBAC,
@@ -28,6 +30,7 @@ func NewAuthService(
 	return &AuthService{
 		userRepo:        userRepo,
 		sessionRepo:     sessionRepo,
+		txr:             txr,
 		hasher:          hasher,
 		tokenSvc:        tokenSvc,
 		rbac:            rbac,

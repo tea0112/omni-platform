@@ -44,10 +44,10 @@ func (m *MockUserRepository) EXPECT() *MockUserRepositoryMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockUserRepository) Create(ctx context.Context, email, passwordHash string) (*auth.User, error) {
+func (m *MockUserRepository) Create(ctx context.Context, email, passwordHash string) (*auth.UserCredentialsRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, email, passwordHash)
-	ret0, _ := ret[0].(*auth.User)
+	ret0, _ := ret[0].(*auth.UserCredentialsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -73,10 +73,10 @@ func (mr *MockUserRepositoryMockRecorder) CreatePasswordResetToken(ctx, userID, 
 }
 
 // GetByEmail mocks base method.
-func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*auth.User, error) {
+func (m *MockUserRepository) GetByEmail(ctx context.Context, email string) (*auth.UserCredentialsRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByEmail", ctx, email)
-	ret0, _ := ret[0].(*auth.User)
+	ret0, _ := ret[0].(*auth.UserCredentialsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -88,10 +88,10 @@ func (mr *MockUserRepositoryMockRecorder) GetByEmail(ctx, email any) *gomock.Cal
 }
 
 // GetByID mocks base method.
-func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*auth.User, error) {
+func (m *MockUserRepository) GetByID(ctx context.Context, id uuid.UUID) (*auth.UserCredentialsRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByID", ctx, id)
-	ret0, _ := ret[0].(*auth.User)
+	ret0, _ := ret[0].(*auth.UserCredentialsRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -202,10 +202,10 @@ func (m *MockSessionRepository) EXPECT() *MockSessionRepositoryMockRecorder {
 }
 
 // CreateSession mocks base method.
-func (m *MockSessionRepository) CreateSession(ctx context.Context, userID uuid.UUID, refreshToken string, deviceInfo map[string]any, ipAddress string, expiresAt time.Time) (*auth.Session, error) {
+func (m *MockSessionRepository) CreateSession(ctx context.Context, userID uuid.UUID, refreshToken string, deviceInfo map[string]any, ipAddress string, expiresAt time.Time) (*auth.SessionContextRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSession", ctx, userID, refreshToken, deviceInfo, ipAddress, expiresAt)
-	ret0, _ := ret[0].(*auth.Session)
+	ret0, _ := ret[0].(*auth.SessionContextRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -217,10 +217,10 @@ func (mr *MockSessionRepositoryMockRecorder) CreateSession(ctx, userID, refreshT
 }
 
 // GetByRefreshToken mocks base method.
-func (m *MockSessionRepository) GetByRefreshToken(ctx context.Context, refreshToken string) (*auth.Session, error) {
+func (m *MockSessionRepository) GetByRefreshToken(ctx context.Context, refreshToken string) (*auth.SessionContextRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByRefreshToken", ctx, refreshToken)
-	ret0, _ := ret[0].(*auth.Session)
+	ret0, _ := ret[0].(*auth.SessionContextRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -232,10 +232,10 @@ func (mr *MockSessionRepositoryMockRecorder) GetByRefreshToken(ctx, refreshToken
 }
 
 // ListByUser mocks base method.
-func (m *MockSessionRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]auth.Session, error) {
+func (m *MockSessionRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]auth.SessionContextRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListByUser", ctx, userID)
-	ret0, _ := ret[0].([]auth.Session)
+	ret0, _ := ret[0].([]auth.SessionContextRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

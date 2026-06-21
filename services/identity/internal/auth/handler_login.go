@@ -4,16 +4,31 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
-type loginRequest struct {
+type loginRequestDTO struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
+type authResponseDTO struct {
+	AccessToken  string       `json:"access_token"`
+	RefreshToken string       `json:"refresh_token"`
+	ExpiresAt    int64        `json:"expires_at"`
+	User         userResponse `json:"user"`
+}
+
+type userResponse struct {
+	ID            uuid.UUID `json:"id"`
+	Email         string    `json:"email"`
+	DisplayName   string    `json:"display_name"`
+	EmailVerified bool      `json:"email_verified"`
+}
+
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	var req loginRequest
+	var req loginRequestDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.WriteErr(w, err)
 		return
@@ -24,5 +39,15 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, result)
+	shared.WriteJSON(w, http.StatusOK, authResponseDTO{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		ExpiresAt:    result.ExpiresAt.Unix(),
+		User: userResponse{
+			ID:            result.User.ID,
+			Email:         result.User.Email,
+			DisplayName:   result.User.DisplayName,
+			EmailVerified: result.User.EmailVerified,
+		},
+	})
 }

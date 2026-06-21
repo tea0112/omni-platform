@@ -7,7 +7,7 @@ import (
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
-func (s *AuthService) Register(ctx context.Context, email, password string) (*User, error) {
+func (s *AuthService) Register(ctx context.Context, email, password string) (*UserCredentials, error) {
 	if email == "" || password == "" {
 		return nil, &shared.ValidationError{Fields: map[string]string{
 			"email":    "required",
@@ -25,10 +25,10 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (*Us
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	user, err := s.userRepo.Create(ctx, email, hash)
+	row, err := s.userRepo.Create(ctx, email, hash)
 	if err != nil {
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
-	return user, nil
+	return row.toDomain(), nil
 }

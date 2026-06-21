@@ -8,7 +8,7 @@ import (
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
-type changeEmailRequest struct {
+type changeEmailRequestDTO struct {
 	CurrentPassword string `json:"current_password"`
 	NewEmail        string `json:"new_email"`
 }
@@ -25,7 +25,7 @@ func (h *Handler) ChangeEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req changeEmailRequest
+	var req changeEmailRequestDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.WriteErr(w, err)
 		return
@@ -39,6 +39,11 @@ func (h *Handler) ChangeEmail(w http.ResponseWriter, r *http.Request) {
 
 	shared.WriteJSON(w, http.StatusOK, map[string]any{
 		"message": "email changed",
-		"user":    user,
+		"user": userResponse{
+			ID:            user.ID,
+			Email:         user.Email,
+			DisplayName:   user.DisplayName,
+			EmailVerified: user.EmailVerified,
+		},
 	})
 }

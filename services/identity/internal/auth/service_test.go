@@ -31,7 +31,7 @@ func setupMocks(t *testing.T) (*mocks.MockUserRepository, *mocks.MockSessionRepo
 	userRepo := mocks.NewMockUserRepository(ctrl)
 	sessionRepo := mocks.NewMockSessionRepository(ctrl)
 	hasher := shared.NewPasswordHasher(4)
-	svc := auth.NewAuthService(userRepo, sessionRepo, hasher, nil, shared.NewRBAC(), &mockEmailSender{}, 30*24*time.Hour)
+	svc := auth.NewAuthService(userRepo, sessionRepo, nil, hasher, nil, shared.NewRBAC(), &mockEmailSender{}, 30*24*time.Hour)
 	return userRepo, sessionRepo, hasher, svc
 }
 
@@ -45,7 +45,7 @@ func setupMocksWithToken(t *testing.T) (*mocks.MockUserRepository, *mocks.MockSe
 	hasher := shared.NewPasswordHasher(4)
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	tokenSvc := shared.NewTokenService(priv, pub, 15*time.Minute)
-	svc := auth.NewAuthService(userRepo, sessionRepo, hasher, tokenSvc, shared.NewRBAC(), &mockEmailSender{}, 30*24*time.Hour)
+	svc := auth.NewAuthService(userRepo, sessionRepo, nil, hasher, tokenSvc, shared.NewRBAC(), &mockEmailSender{}, 30*24*time.Hour)
 	return userRepo, sessionRepo, hasher, svc
 }
 
@@ -53,16 +53,16 @@ func TestAuthService_Register_Success(t *testing.T) {
 	userRepo, _, _, svc := setupMocks(t)
 
 	userRepo.EXPECT().GetByEmail(gomock.Any(), "test@example.com").Return(nil, shared.ErrNotFound)
-	userRepo.EXPECT().Create(gomock.Any(), "test@example.com", gomock.Any()).Return(&auth.User{ID: uuid.Must(uuid.NewV7())}, nil)
+	userRepo.EXPECT().Create(gomock.Any(), "test@example.com", gomock.Any()).Return(&auth.UserCredentialsRow{ID: uuid.Must(uuid.NewV7())}, nil)
 
-	user, err := svc.Register(context.Background(), "test@example.com", "password123")
+	creds, err := svc.Register(context.Background(), "test@example.com", "password123")
 	require.NoError(t, err)
-	assert.NotEmpty(t, user.ID)
+	assert.NotEmpty(t, creds.User().ID)
 }
 
 func TestAuthService_Register_Duplicate(t *testing.T) {
 	userRepo, _, _, svc := setupMocks(t)
-	userRepo.EXPECT().GetByEmail(gomock.Any(), "existing@test.com").Return(&auth.User{}, nil)
+	userRepo.EXPECT().GetByEmail(gomock.Any(), "existing@test.com").Return(&auth.UserCredentialsRow{}, nil)
 
 	_, err := svc.Register(context.Background(), "existing@test.com", "password")
 	assert.ErrorIs(t, err, shared.ErrDuplicate)
@@ -91,7 +91,7 @@ func TestAuthService_ForgotPassword_Success(t *testing.T) {
 	userRepo, _, _, svc := setupMocks(t)
 	userID := uuid.Must(uuid.NewV7())
 
-	userRepo.EXPECT().GetByEmail(gomock.Any(), "test@example.com").Return(&auth.User{ID: userID, Email: "test@example.com"}, nil)
+	userRepo.EXPECT().GetByEmail(gomock.Any(), "test@example.com").Return(&auth.UserCredentialsRow{ID: userID, Email: "test@example.com"}, nil)
 	userRepo.EXPECT().CreatePasswordResetToken(gomock.Any(), userID, gomock.Any(), gomock.Any()).Return(nil)
 
 	err := svc.ForgotPassword(context.Background(), "test@example.com")
@@ -158,9 +158,9 @@ func TestAuthService_Login_Success(t *testing.T) {
 	password := "password123"
 	hash, _ := hasher.Hash(password)
 
-	userRepo.EXPECT().GetByEmail(gomock.Any(), "test@example.com").Return(&auth.User{ID: userID, Email: "test@example.com", PasswordHash: hash}, nil)
+	userRepo.EXPECT().GetByEmail(gomock.Any(), "test@example.com").Return(&auth.UserCredentialsRow{ID: userID, Email: "test@example.com", PasswordHash: hash}, nil)
 	userRepo.EXPECT().GetUserRolesAndPermissions(gomock.Any(), userID).Return([]string{"user"}, []string{"profile.read", "profile.write"}, nil)
-	sessionRepo.EXPECT().CreateSession(gomock.Any(), userID, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&auth.Session{}, nil)
+	sessionRepo.EXPECT().CreateSession(gomock.Any(), userID, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&auth.SessionContextRow{}, nil)
 
 	result, err := svc.Login(context.Background(), "test@example.com", password, "127.0.0.1", nil)
 	require.NoError(t, err)
@@ -173,7 +173,7 @@ func TestAuthService_Login_InvalidPassword(t *testing.T) {
 	userID := uuid.Must(uuid.NewV7())
 	hash, _ := hasher.Hash("correct-password")
 
-	userRepo.EXPECT().GetByEmail(gomock.Any(), "test@example.com").Return(&auth.User{ID: userID, Email: "test@example.com", PasswordHash: hash}, nil)
+	userRepo.EXPECT().GetByEmail(gomock.Any(), "test@example.com").Return(&auth.UserCredentialsRow{ID: userID, Email: "test@example.com", PasswordHash: hash}, nil)
 
 	_, err := svc.Login(context.Background(), "test@example.com", "wrong-password", "127.0.0.1", nil)
 	assert.ErrorIs(t, err, shared.ErrUnauthenticated)
@@ -194,16 +194,16 @@ func TestAuthService_Refresh_Success(t *testing.T) {
 	sessionID := uuid.Must(uuid.NewV7())
 	refreshToken := "valid-refresh-token"
 
-	sessionRepo.EXPECT().GetByRefreshToken(gomock.Any(), refreshToken).Return(&auth.Session{
+	sessionRepo.EXPECT().GetByRefreshToken(gomock.Any(), refreshToken).Return(&auth.SessionContextRow{
 		ID:           sessionID,
 		UserID:       userID,
 		RefreshToken: refreshToken,
 		ExpiresAt:    time.Now().Add(1 * time.Hour),
 	}, nil)
 	sessionRepo.EXPECT().Revoke(gomock.Any(), sessionID).Return(nil)
-	userRepo.EXPECT().GetByID(gomock.Any(), userID).Return(&auth.User{ID: userID, Email: "test@example.com"}, nil)
+	userRepo.EXPECT().GetByID(gomock.Any(), userID).Return(&auth.UserCredentialsRow{ID: userID, Email: "test@example.com"}, nil)
 	userRepo.EXPECT().GetUserRolesAndPermissions(gomock.Any(), userID).Return([]string{"user"}, []string{"profile.read", "profile.write"}, nil)
-	sessionRepo.EXPECT().CreateSession(gomock.Any(), userID, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&auth.Session{}, nil)
+	sessionRepo.EXPECT().CreateSession(gomock.Any(), userID, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&auth.SessionContextRow{}, nil)
 
 	result, err := svc.Refresh(context.Background(), refreshToken, "127.0.0.1", nil)
 	require.NoError(t, err)
@@ -216,7 +216,7 @@ func TestAuthService_Refresh_Revoked(t *testing.T) {
 	now := time.Now()
 	refreshToken := "revoked-token"
 
-	sessionRepo.EXPECT().GetByRefreshToken(gomock.Any(), refreshToken).Return(&auth.Session{
+	sessionRepo.EXPECT().GetByRefreshToken(gomock.Any(), refreshToken).Return(&auth.SessionContextRow{
 		RefreshToken: refreshToken,
 		RevokedAt:    &now,
 		ExpiresAt:    time.Now().Add(1 * time.Hour),
@@ -231,7 +231,7 @@ func TestAuthService_Refresh_Expired(t *testing.T) {
 	_, sessionRepo, _, svc := setupMocksWithToken(t)
 	refreshToken := "expired-token"
 
-	sessionRepo.EXPECT().GetByRefreshToken(gomock.Any(), refreshToken).Return(&auth.Session{
+	sessionRepo.EXPECT().GetByRefreshToken(gomock.Any(), refreshToken).Return(&auth.SessionContextRow{
 		RefreshToken: refreshToken,
 		ExpiresAt:    time.Now().Add(-1 * time.Hour),
 	}, nil)

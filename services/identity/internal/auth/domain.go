@@ -4,39 +4,32 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/tea0112/omni-platform/services/identity/internal/identityuser"
 )
 
-type User struct {
-	ID            uuid.UUID `json:"id"`
-	Email         string    `json:"email"`
-	PasswordHash  string    `json:"-"`
-	DisplayName   string    `json:"display_name"`
-	EmailVerified bool      `json:"email_verified"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+type UserCredentials struct {
+	user         identityuser.User
+	passwordHash string
 }
 
-type Session struct {
-	ID           uuid.UUID      `json:"id"`
-	UserID       uuid.UUID      `json:"user_id"`
-	RefreshToken string         `json:"-"`
-	DeviceInfo   map[string]any `json:"device_info,omitempty"`
-	IPAddress    string         `json:"ip_address"`
-	ExpiresAt    time.Time      `json:"expires_at"`
-	RevokedAt    *time.Time     `json:"revoked_at,omitempty"`
-	CreatedAt    time.Time      `json:"created_at"`
+func NewUserCredentials(u identityuser.User, hash string) *UserCredentials {
+	return &UserCredentials{user: u, passwordHash: hash}
+}
+
+func (c *UserCredentials) User() identityuser.User { return c.user }
+func (c *UserCredentials) PasswordHash() string    { return c.passwordHash }
+
+type AuthResult struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresAt    time.Time
+	User         identityuser.User
 }
 
 type Credentials struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type AuthResult struct {
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	User         User      `json:"user"`
+	Email    string
+	Password string
 }
 
 type ChangePasswordInput struct {
@@ -56,4 +49,21 @@ type PasswordResetToken struct {
 	ExpiresAt time.Time
 	UsedAt    *time.Time
 	CreatedAt time.Time
+}
+
+type SessionContext struct {
+	RefreshToken string
+	DeviceInfo   map[string]any
+	IPAddress    string
+}
+
+type SessionWithContext struct {
+	ID           uuid.UUID
+	UserID       uuid.UUID
+	RefreshToken string
+	DeviceInfo   map[string]any
+	IPAddress    string
+	ExpiresAt    time.Time
+	RevokedAt    *time.Time
+	CreatedAt    time.Time
 }

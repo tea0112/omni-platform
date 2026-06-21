@@ -10,9 +10,14 @@ import (
 )
 
 func (s *AuthService) Refresh(ctx context.Context, refreshToken, ipAddress string, deviceInfo map[string]any) (*AuthResult, error) {
-	session, err := s.sessionRepo.GetByRefreshToken(ctx, refreshToken)
+	sessionRow, err := s.sessionRepo.GetByRefreshToken(ctx, refreshToken)
 	if err != nil {
 		return nil, shared.ErrNotFound
+	}
+
+	session, err := sessionRow.toSessionWithContext()
+	if err != nil {
+		return nil, fmt.Errorf("convert session: %w", err)
 	}
 
 	if session.RevokedAt != nil {
@@ -26,23 +31,24 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken, ipAddress strin
 
 	s.sessionRepo.Revoke(ctx, session.ID)
 
-	user, err := s.userRepo.GetByID(ctx, session.UserID)
+	userRow, err := s.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("get user: %w", err)
 	}
+	creds := userRow.toDomain()
 
-	roles, perms, err := s.userRepo.GetUserRolesAndPermissions(ctx, user.ID)
+	roles, perms, err := s.userRepo.GetUserRolesAndPermissions(ctx, creds.User().ID)
 	if err != nil {
 		return nil, fmt.Errorf("get roles and permissions: %w", err)
 	}
 
-	accessToken, expiresAt, err := s.tokenSvc.GenerateAccessToken(user.ID.String(), roles, perms)
+	accessToken, expiresAt, err := s.tokenSvc.GenerateAccessToken(creds.User().ID.String(), roles, perms)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token: %w", err)
 	}
 
 	newRefreshToken := uuid.Must(uuid.NewV7()).String()
-	_, err = s.sessionRepo.CreateSession(ctx, user.ID, newRefreshToken, deviceInfo, ipAddress, time.Now().Add(s.refreshTokenTTL))
+	_, err = s.sessionRepo.CreateSession(ctx, creds.User().ID, newRefreshToken, deviceInfo, ipAddress, time.Now().Add(s.refreshTokenTTL))
 	if err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
 	}
@@ -51,6 +57,6 @@ func (s *AuthService) Refresh(ctx context.Context, refreshToken, ipAddress strin
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
 		ExpiresAt:    expiresAt,
-		User:         *user,
+		User:         creds.User(),
 	}, nil
 }

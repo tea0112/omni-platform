@@ -6,50 +6,72 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/tea0112/omni-platform/services/identity/internal/identityuser"
 )
 
-func (r *AuthPGRepository) Create(ctx context.Context, email, passwordHash string) (*User, error) {
-	user := &User{
-		ID:           uuid.Must(uuid.NewV7()),
-		Email:        email,
-		PasswordHash: passwordHash,
-	}
-	_, err := r.pool.Exec(ctx,
+type UserCredentialsRow struct {
+	ID            uuid.UUID
+	Email         string
+	PasswordHash  string
+	DisplayName   string
+	EmailVerified bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (r UserCredentialsRow) toDomain() *UserCredentials {
+	return NewUserCredentials(
+		identityuser.User{
+			ID:            r.ID,
+			Email:         r.Email,
+			DisplayName:   r.DisplayName,
+			EmailVerified: r.EmailVerified,
+			CreatedAt:     r.CreatedAt,
+			UpdatedAt:     r.UpdatedAt,
+		},
+		r.PasswordHash,
+	)
+}
+
+func (r *AuthPGRepository) Create(ctx context.Context, email, passwordHash string) (*UserCredentialsRow, error) {
+	id := uuid.Must(uuid.NewV7())
+	_, err := r.q(ctx).Exec(ctx,
 		`INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)`,
-		user.ID, user.Email, user.PasswordHash,
+		id, email, passwordHash,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("insert user: %w", err)
 	}
-	return user, nil
+	return r.GetByID(ctx, id)
 }
 
-func (r *AuthPGRepository) GetByEmail(ctx context.Context, email string) (*User, error) {
-	user := &User{}
-	err := r.pool.QueryRow(ctx,
+func (r *AuthPGRepository) GetByEmail(ctx context.Context, email string) (*UserCredentialsRow, error) {
+	row := &UserCredentialsRow{}
+	err := r.q(ctx).QueryRow(ctx,
 		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at FROM users WHERE email = $1`,
 		email,
-	).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&row.ID, &row.Email, &row.PasswordHash, &row.DisplayName, &row.EmailVerified, &row.CreatedAt, &row.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get user by email: %w", err)
 	}
-	return user, nil
+	return row, nil
 }
 
-func (r *AuthPGRepository) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
-	user := &User{}
-	err := r.pool.QueryRow(ctx,
+func (r *AuthPGRepository) GetByID(ctx context.Context, id uuid.UUID) (*UserCredentialsRow, error) {
+	row := &UserCredentialsRow{}
+	err := r.q(ctx).QueryRow(ctx,
 		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at FROM users WHERE id = $1`,
 		id,
-	).Scan(&user.ID, &user.Email, &user.PasswordHash, &user.DisplayName, &user.EmailVerified, &user.CreatedAt, &user.UpdatedAt)
+	).Scan(&row.ID, &row.Email, &row.PasswordHash, &row.DisplayName, &row.EmailVerified, &row.CreatedAt, &row.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("get user by id: %w", err)
 	}
-	return user, nil
+	return row, nil
 }
 
 func (r *AuthPGRepository) CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error {
-	_, err := r.pool.Exec(ctx,
+	_, err := r.q(ctx).Exec(ctx,
 		`INSERT INTO password_reset_tokens (id, user_id, token, expires_at) VALUES ($1, $2, $3, $4)`,
 		uuid.Must(uuid.NewV7()), userID, token, expiresAt,
 	)
@@ -63,7 +85,7 @@ func (r *AuthPGRepository) GetPasswordResetToken(ctx context.Context, token stri
 	var userID uuid.UUID
 	var expiresAt time.Time
 	var usedAt *time.Time
-	err := r.pool.QueryRow(ctx,
+	err := r.q(ctx).QueryRow(ctx,
 		`SELECT user_id, expires_at, used_at FROM password_reset_tokens WHERE token = $1`,
 		token,
 	).Scan(&userID, &expiresAt, &usedAt)
@@ -74,7 +96,7 @@ func (r *AuthPGRepository) GetPasswordResetToken(ctx context.Context, token stri
 }
 
 func (r *AuthPGRepository) MarkPasswordResetTokenUsed(ctx context.Context, token string) error {
-	_, err := r.pool.Exec(ctx,
+	_, err := r.q(ctx).Exec(ctx,
 		`UPDATE password_reset_tokens SET used_at = now() WHERE token = $1`,
 		token,
 	)
@@ -85,7 +107,7 @@ func (r *AuthPGRepository) MarkPasswordResetTokenUsed(ctx context.Context, token
 }
 
 func (r *AuthPGRepository) UpdatePassword(ctx context.Context, userID uuid.UUID, passwordHash string) error {
-	_, err := r.pool.Exec(ctx,
+	_, err := r.q(ctx).Exec(ctx,
 		`UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2`,
 		passwordHash, userID,
 	)
@@ -96,7 +118,7 @@ func (r *AuthPGRepository) UpdatePassword(ctx context.Context, userID uuid.UUID,
 }
 
 func (r *AuthPGRepository) UpdateEmail(ctx context.Context, userID uuid.UUID, email string) error {
-	_, err := r.pool.Exec(ctx,
+	_, err := r.q(ctx).Exec(ctx,
 		`UPDATE users SET email = $1, email_verified = false, updated_at = now() WHERE id = $2`,
 		email, userID,
 	)
@@ -107,7 +129,7 @@ func (r *AuthPGRepository) UpdateEmail(ctx context.Context, userID uuid.UUID, em
 }
 
 func (r *AuthPGRepository) GetUserRolesAndPermissions(ctx context.Context, userID uuid.UUID) ([]string, []string, error) {
-	rows, err := r.pool.Query(ctx,
+	rows, err := r.q(ctx).Query(ctx,
 		`SELECT r.name, rp.permission
 		 FROM user_roles ur
 		 JOIN roles r ON r.id = ur.role_id
@@ -135,8 +157,8 @@ func (r *AuthPGRepository) GetUserRolesAndPermissions(ctx context.Context, userI
 	}
 
 	roles := make([]string, 0, len(roleSet))
-	for r := range roleSet {
-		roles = append(roles, r)
+	for name := range roleSet {
+		roles = append(roles, name)
 	}
 	perms := make([]string, 0, len(permSet))
 	for p := range permSet {

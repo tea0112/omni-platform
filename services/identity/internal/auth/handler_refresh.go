@@ -7,12 +7,12 @@ import (
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
-type refreshRequest struct {
+type refreshRequestDTO struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
-	var req refreshRequest
+	var req refreshRequestDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.WriteErr(w, err)
 		return
@@ -23,5 +23,15 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, result)
+	shared.WriteJSON(w, http.StatusOK, authResponseDTO{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		ExpiresAt:    result.ExpiresAt.Unix(),
+		User: userResponse{
+			ID:            result.User.ID,
+			Email:         result.User.Email,
+			DisplayName:   result.User.DisplayName,
+			EmailVerified: result.User.EmailVerified,
+		},
+	})
 }

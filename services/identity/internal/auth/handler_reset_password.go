@@ -7,13 +7,13 @@ import (
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
-type resetPasswordRequest struct {
+type resetPasswordRequestDTO struct {
 	Token       string `json:"token"`
 	NewPassword string `json:"new_password"`
 }
 
 func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
-	var req resetPasswordRequest
+	var req resetPasswordRequestDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		shared.WriteErr(w, err)
 		return

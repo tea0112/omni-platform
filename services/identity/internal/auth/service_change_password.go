@@ -22,12 +22,13 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID uuid.UUID, curr
 		}}
 	}
 
-	user, err := s.userRepo.GetByID(ctx, userID)
+	row, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("get user: %w", err)
 	}
+	creds := row.toDomain()
 
-	if err := s.hasher.Compare(user.PasswordHash, currentPassword); err != nil {
+	if err := s.hasher.Compare(creds.PasswordHash(), currentPassword); err != nil {
 		return shared.ErrUnauthenticated
 	}
 
