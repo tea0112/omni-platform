@@ -32,6 +32,8 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 			Email:         result.User.Email,
 			DisplayName:   result.User.DisplayName,
 			EmailVerified: result.User.EmailVerified,
+			CreatedAt:     result.User.CreatedAt,
+			UpdatedAt:     result.User.UpdatedAt,
 		},
 	})
 }

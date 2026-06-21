@@ -44,6 +44,8 @@ func (h *Handler) ChangeEmail(w http.ResponseWriter, r *http.Request) {
 			Email:         user.Email,
 			DisplayName:   user.DisplayName,
 			EmailVerified: user.EmailVerified,
+			CreatedAt:     user.CreatedAt,
+			UpdatedAt:     user.UpdatedAt,
 		},
 	})
 }

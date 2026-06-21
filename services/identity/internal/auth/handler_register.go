@@ -29,5 +29,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		Email:         u.Email,
 		DisplayName:   u.DisplayName,
 		EmailVerified: u.EmailVerified,
+		CreatedAt:     u.CreatedAt,
+		UpdatedAt:     u.UpdatedAt,
 	})
 }

@@ -26,6 +26,8 @@ type userResponse struct {
 	Email         string    `json:"email"`
 	DisplayName   string    `json:"display_name"`
 	EmailVerified bool      `json:"email_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -49,6 +51,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 			Email:         result.User.Email,
 			DisplayName:   result.User.DisplayName,
 			EmailVerified: result.User.EmailVerified,
+			CreatedAt:     result.User.CreatedAt,
+			UpdatedAt:     result.User.UpdatedAt,
 		},
 	})
 }
