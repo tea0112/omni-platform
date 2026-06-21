@@ -8,6 +8,10 @@ set positional-arguments := true
 docker  := 'docker compose'
 goflags := '-trimpath'
 
+# Run a Go subcommand via the server binary (used by subcommand recipes)
+_go_run cmd *args:
+    go run ./cmd/server {{ cmd }} {{ args }}
+
 # Default target: full local stack
 default: dev
 
@@ -32,6 +36,7 @@ db-up:
     {{ docker }} up -d identity-postgres
 
 # Stop the local Postgres container
+[confirm("This will stop the Postgres container and lose any unsaved state. Continue?")]
 db-down:
     {{ docker }} down
 
@@ -53,17 +58,17 @@ db-reset:
 
 # Apply all up migrations
 migrate:
-    go run ./cmd/server migrate
+    just _go_run migrate
 
 # Roll back one migration
 migrate-down:
-    go run ./cmd/server migrate down
+    just _go_run migrate down
 
 # --- Secrets ---
 
 # Generate a fresh Ed25519 JWK and write it to .env.local
 gen-jwk:
-    go run ./cmd/server gen-jwk
+    just _go_run gen-jwk
 
 # --- Tests ---
 
