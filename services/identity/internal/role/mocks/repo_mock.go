@@ -71,10 +71,10 @@ func (mr *MockRoleRepositoryMockRecorder) AssignToUser(ctx, roleID, userID any) 
 }
 
 // Create mocks base method.
-func (m *MockRoleRepository) Create(ctx context.Context, req role.CreateRoleRequest) (*role.Role, error) {
+func (m *MockRoleRepository) Create(ctx context.Context, req role.CreateRoleRequest) (*role.RoleRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, req)
-	ret0, _ := ret[0].(*role.Role)
+	ret0, _ := ret[0].(*role.RoleRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -100,10 +100,10 @@ func (mr *MockRoleRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call {
 }
 
 // GetByID mocks base method.
-func (m *MockRoleRepository) GetByID(ctx context.Context, id uuid.UUID) (*role.Role, error) {
+func (m *MockRoleRepository) GetByID(ctx context.Context, id uuid.UUID) (*role.RoleRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByID", ctx, id)
-	ret0, _ := ret[0].(*role.Role)
+	ret0, _ := ret[0].(*role.RoleRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -130,10 +130,10 @@ func (mr *MockRoleRepositoryMockRecorder) GetPermissions(ctx, roleID any) *gomoc
 }
 
 // GetUserRoles mocks base method.
-func (m *MockRoleRepository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]role.Role, error) {
+func (m *MockRoleRepository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]role.RoleRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUserRoles", ctx, userID)
-	ret0, _ := ret[0].([]role.Role)
+	ret0, _ := ret[0].([]role.RoleRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -145,10 +145,10 @@ func (mr *MockRoleRepositoryMockRecorder) GetUserRoles(ctx, userID any) *gomock.
 }
 
 // List mocks base method.
-func (m *MockRoleRepository) List(ctx context.Context) ([]role.Role, error) {
+func (m *MockRoleRepository) List(ctx context.Context) ([]role.RoleRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx)
-	ret0, _ := ret[0].([]role.Role)
+	ret0, _ := ret[0].([]role.RoleRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -188,10 +188,10 @@ func (mr *MockRoleRepositoryMockRecorder) RemovePermission(ctx, roleID, permissi
 }
 
 // Update mocks base method.
-func (m *MockRoleRepository) Update(ctx context.Context, id uuid.UUID, req role.UpdateRoleRequest) (*role.Role, error) {
+func (m *MockRoleRepository) Update(ctx context.Context, id uuid.UUID, req role.UpdateRoleRequest) (*role.RoleRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, id, req)
-	ret0, _ := ret[0].(*role.Role)
+	ret0, _ := ret[0].(*role.RoleRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

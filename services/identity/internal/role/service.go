@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
@@ -20,28 +21,51 @@ func (s *RoleService) Create(ctx context.Context, req CreateRoleRequest) (*Role,
 	if err := s.rbac.Can(ctx, "roles.write"); err != nil {
 		return nil, err
 	}
-	return s.repo.Create(ctx, req)
+	row, err := s.repo.Create(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	r := row.toDomain()
+	return &r, nil
 }
 
 func (s *RoleService) GetByID(ctx context.Context, id uuid.UUID) (*Role, error) {
 	if err := s.rbac.Can(ctx, "roles.read"); err != nil {
 		return nil, err
 	}
-	return s.repo.GetByID(ctx, id)
+	row, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	r := row.toDomain()
+	return &r, nil
 }
 
 func (s *RoleService) List(ctx context.Context) ([]Role, error) {
 	if err := s.rbac.Can(ctx, "roles.read"); err != nil {
 		return nil, err
 	}
-	return s.repo.List(ctx)
+	rows, err := s.repo.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	roles := make([]Role, len(rows))
+	for i, r := range rows {
+		roles[i] = r.toDomain()
+	}
+	return roles, nil
 }
 
 func (s *RoleService) Update(ctx context.Context, id uuid.UUID, req UpdateRoleRequest) (*Role, error) {
 	if err := s.rbac.Can(ctx, "roles.write"); err != nil {
 		return nil, err
 	}
-	return s.repo.Update(ctx, id, req)
+	row, err := s.repo.Update(ctx, id, req)
+	if err != nil {
+		return nil, err
+	}
+	r := row.toDomain()
+	return &r, nil
 }
 
 func (s *RoleService) Delete(ctx context.Context, id uuid.UUID) error {
@@ -76,7 +100,15 @@ func (s *RoleService) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]Rol
 	if err := s.rbac.Can(ctx, "roles.read"); err != nil {
 		return nil, err
 	}
-	return s.repo.GetUserRoles(ctx, userID)
+	rows, err := s.repo.GetUserRoles(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	roles := make([]Role, len(rows))
+	for i, r := range rows {
+		roles[i] = r.toDomain()
+	}
+	return roles, nil
 }
 
 func (s *RoleService) AssignToUser(ctx context.Context, roleID, userID uuid.UUID) error {

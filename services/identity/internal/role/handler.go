@@ -3,11 +3,61 @@ package role
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
+
+type roleResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+func toRoleResponse(r Role) roleResponse {
+	return roleResponse{
+		ID:          r.ID,
+		Name:        r.Name,
+		Description: r.Description,
+		CreatedAt:   r.CreatedAt,
+	}
+}
+
+type createRoleRequestDTO struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+func (d createRoleRequestDTO) toDomain() CreateRoleRequest {
+	return CreateRoleRequest{
+		Name:        d.Name,
+		Description: d.Description,
+	}
+}
+
+type updateRoleRequestDTO struct {
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+}
+
+func (d updateRoleRequestDTO) toDomain() UpdateRoleRequest {
+	return UpdateRoleRequest{
+		Name:        d.Name,
+		Description: d.Description,
+	}
+}
+
+type addPermissionRequestDTO struct {
+	Permission string `json:"permission"`
+}
+
+func (d addPermissionRequestDTO) toDomain() AddPermissionRequest {
+	return AddPermissionRequest{Permission: d.Permission}
+}
 
 type Handler struct {
 	svc *RoleService
@@ -32,17 +82,17 @@ func (h *Handler) RegisterRoutes(r chi.Router) {
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	var req CreateRoleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var dto createRoleRequestDTO
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
-	role, err := h.svc.Create(r.Context(), req)
+	role, err := h.svc.Create(r.Context(), dto.toDomain())
 	if err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusCreated, role)
+	shared.WriteJSON(w, http.StatusCreated, toRoleResponse(*role))
 }
 
 func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +106,7 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, role)
+	shared.WriteJSON(w, http.StatusOK, toRoleResponse(*role))
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +115,11 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, roles)
+	resp := make([]roleResponse, len(roles))
+	for i, rr := range roles {
+		resp[i] = toRoleResponse(rr)
+	}
+	shared.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
@@ -74,17 +128,17 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, &shared.ValidationError{Fields: map[string]string{"id": "invalid uuid"}})
 		return
 	}
-	var req UpdateRoleRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var dto updateRoleRequestDTO
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
-	role, err := h.svc.Update(r.Context(), id, req)
+	role, err := h.svc.Update(r.Context(), id, dto.toDomain())
 	if err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, role)
+	shared.WriteJSON(w, http.StatusOK, toRoleResponse(*role))
 }
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -120,12 +174,12 @@ func (h *Handler) AddPermission(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, &shared.ValidationError{Fields: map[string]string{"id": "invalid uuid"}})
 		return
 	}
-	var req AddPermissionRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var dto addPermissionRequestDTO
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
-	if err := h.svc.AddPermission(r.Context(), id, req.Permission); err != nil {
+	if err := h.svc.AddPermission(r.Context(), id, dto.Permission); err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
@@ -204,7 +258,9 @@ func (h *Handler) GetUserRoles(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, roles)
+	resp := make([]roleResponse, len(roles))
+	for i, rr := range roles {
+		resp[i] = toRoleResponse(rr)
+	}
+	shared.WriteJSON(w, http.StatusOK, resp)
 }
-
-

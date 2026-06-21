@@ -7,22 +7,22 @@ import (
 )
 
 type Role struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          uuid.UUID
+	Name        string
+	Description string
+	CreatedAt   time.Time
 }
 
 type CreateRoleRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name        string
+	Description string
 }
 
 type UpdateRoleRequest struct {
-	Name        *string `json:"name"`
-	Description *string `json:"description"`
+	Name        *string
+	Description *string
 }
 
 type AddPermissionRequest struct {
-	Permission string `json:"permission"`
+	Permission string
 }

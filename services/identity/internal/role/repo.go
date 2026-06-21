@@ -4,45 +4,70 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
 //go:generate mockgen -destination=mocks/repo_mock.go -package=mocks . RoleRepository
 
 type RoleRepository interface {
-	Create(ctx context.Context, req CreateRoleRequest) (*Role, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*Role, error)
-	List(ctx context.Context) ([]Role, error)
-	Update(ctx context.Context, id uuid.UUID, req UpdateRoleRequest) (*Role, error)
+	Create(ctx context.Context, req CreateRoleRequest) (*RoleRow, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*RoleRow, error)
+	List(ctx context.Context) ([]RoleRow, error)
+	Update(ctx context.Context, id uuid.UUID, req UpdateRoleRequest) (*RoleRow, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	AddPermission(ctx context.Context, roleID uuid.UUID, permission string) error
 	RemovePermission(ctx context.Context, roleID uuid.UUID, permission string) error
 	GetPermissions(ctx context.Context, roleID uuid.UUID) ([]string, error)
-	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]Role, error)
+	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]RoleRow, error)
 	AssignToUser(ctx context.Context, roleID, userID uuid.UUID) error
 	RemoveFromUser(ctx context.Context, roleID, userID uuid.UUID) error
 }
 
+type RoleRow struct {
+	ID          uuid.UUID
+	Name        string
+	Description string
+	CreatedAt   time.Time
+}
+
+func (r RoleRow) toDomain() Role {
+	return Role{
+		ID:          r.ID,
+		Name:        r.Name,
+		Description: r.Description,
+		CreatedAt:   r.CreatedAt,
+	}
+}
+
 type RolePGRepository struct {
-	pool *pgxpool.Pool
+	defaultQuerier shared.Querier
 }
 
 var _ RoleRepository = (*RolePGRepository)(nil)
 
-func NewRoleRepository(pool *pgxpool.Pool) *RolePGRepository {
-	return &RolePGRepository{pool: pool}
+func NewRolePGRepository(pool *pgxpool.Pool) *RolePGRepository {
+	return &RolePGRepository{defaultQuerier: pool}
 }
 
-func (r *RolePGRepository) Create(ctx context.Context, req CreateRoleRequest) (*Role, error) {
-	role := &Role{
+func (r *RolePGRepository) q(ctx context.Context) shared.Querier {
+	if txQ := shared.QuerierFromContext(ctx); txQ != nil {
+		return txQ
+	}
+	return r.defaultQuerier
+}
+
+func (r *RolePGRepository) Create(ctx context.Context, req CreateRoleRequest) (*RoleRow, error) {
+	role := &RoleRow{
 		ID:   uuid.Must(uuid.NewV7()),
 		Name: req.Name,
 	}
-	_, err := r.pool.Exec(ctx,
+	_, err := r.q(ctx).Exec(ctx,
 		`INSERT INTO roles (id, name, description) VALUES ($1, $2, $3)`,
 		role.ID, role.Name, role.Description,
 	)
@@ -52,9 +77,9 @@ func (r *RolePGRepository) Create(ctx context.Context, req CreateRoleRequest) (*
 	return role, nil
 }
 
-func (r *RolePGRepository) GetByID(ctx context.Context, id uuid.UUID) (*Role, error) {
-	role := &Role{}
-	err := r.pool.QueryRow(ctx,
+func (r *RolePGRepository) GetByID(ctx context.Context, id uuid.UUID) (*RoleRow, error) {
+	role := &RoleRow{}
+	err := r.q(ctx).QueryRow(ctx,
 		`SELECT id, name, description, created_at FROM roles WHERE id = $1`, id,
 	).Scan(&role.ID, &role.Name, &role.Description, &role.CreatedAt)
 	if err != nil {
@@ -66,8 +91,8 @@ func (r *RolePGRepository) GetByID(ctx context.Context, id uuid.UUID) (*Role, er
 	return role, nil
 }
 
-func (r *RolePGRepository) List(ctx context.Context) ([]Role, error) {
-	rows, err := r.pool.Query(ctx,
+func (r *RolePGRepository) List(ctx context.Context) ([]RoleRow, error) {
+	rows, err := r.q(ctx).Query(ctx,
 		`SELECT id, name, description, created_at FROM roles ORDER BY name`,
 	)
 	if err != nil {
@@ -75,26 +100,29 @@ func (r *RolePGRepository) List(ctx context.Context) ([]Role, error) {
 	}
 	defer rows.Close()
 
-	var roles []Role
+	var roles []RoleRow
 	for rows.Next() {
-		var role Role
+		var role RoleRow
 		if err := rows.Scan(&role.ID, &role.Name, &role.Description, &role.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan role: %w", err)
 		}
 		roles = append(roles, role)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate roles: %w", err)
+	}
 	return roles, nil
 }
 
-func (r *RolePGRepository) Update(ctx context.Context, id uuid.UUID, req UpdateRoleRequest) (*Role, error) {
+func (r *RolePGRepository) Update(ctx context.Context, id uuid.UUID, req UpdateRoleRequest) (*RoleRow, error) {
 	if req.Name != nil {
-		_, err := r.pool.Exec(ctx, `UPDATE roles SET name = $1 WHERE id = $2`, *req.Name, id)
+		_, err := r.q(ctx).Exec(ctx, `UPDATE roles SET name = $1 WHERE id = $2`, *req.Name, id)
 		if err != nil {
 			return nil, fmt.Errorf("update role name: %w", err)
 		}
 	}
 	if req.Description != nil {
-		_, err := r.pool.Exec(ctx, `UPDATE roles SET description = $1 WHERE id = $2`, *req.Description, id)
+		_, err := r.q(ctx).Exec(ctx, `UPDATE roles SET description = $1 WHERE id = $2`, *req.Description, id)
 		if err != nil {
 			return nil, fmt.Errorf("update role description: %w", err)
 		}
@@ -103,12 +131,12 @@ func (r *RolePGRepository) Update(ctx context.Context, id uuid.UUID, req UpdateR
 }
 
 func (r *RolePGRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM roles WHERE id = $1`, id)
+	_, err := r.q(ctx).Exec(ctx, `DELETE FROM roles WHERE id = $1`, id)
 	return err
 }
 
 func (r *RolePGRepository) AddPermission(ctx context.Context, roleID uuid.UUID, permission string) error {
-	_, err := r.pool.Exec(ctx,
+	_, err := r.q(ctx).Exec(ctx,
 		`INSERT INTO role_permissions (role_id, permission) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
 		roleID, permission,
 	)
@@ -116,7 +144,7 @@ func (r *RolePGRepository) AddPermission(ctx context.Context, roleID uuid.UUID, 
 }
 
 func (r *RolePGRepository) RemovePermission(ctx context.Context, roleID uuid.UUID, permission string) error {
-	_, err := r.pool.Exec(ctx,
+	_, err := r.q(ctx).Exec(ctx,
 		`DELETE FROM role_permissions WHERE role_id = $1 AND permission = $2`,
 		roleID, permission,
 	)
@@ -124,7 +152,7 @@ func (r *RolePGRepository) RemovePermission(ctx context.Context, roleID uuid.UUI
 }
 
 func (r *RolePGRepository) GetPermissions(ctx context.Context, roleID uuid.UUID) ([]string, error) {
-	rows, err := r.pool.Query(ctx,
+	rows, err := r.q(ctx).Query(ctx,
 		`SELECT permission FROM role_permissions WHERE role_id = $1 ORDER BY permission`,
 		roleID,
 	)
@@ -141,11 +169,14 @@ func (r *RolePGRepository) GetPermissions(ctx context.Context, roleID uuid.UUID)
 		}
 		permissions = append(permissions, p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate permissions: %w", err)
+	}
 	return permissions, nil
 }
 
-func (r *RolePGRepository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]Role, error) {
-	rows, err := r.pool.Query(ctx,
+func (r *RolePGRepository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]RoleRow, error) {
+	rows, err := r.q(ctx).Query(ctx,
 		`SELECT r.id, r.name, r.description, r.created_at FROM roles r
 		 JOIN user_roles ur ON ur.role_id = r.id
 		 WHERE ur.user_id = $1 ORDER BY r.name`,
@@ -156,19 +187,22 @@ func (r *RolePGRepository) GetUserRoles(ctx context.Context, userID uuid.UUID) (
 	}
 	defer rows.Close()
 
-	var roles []Role
+	var roles []RoleRow
 	for rows.Next() {
-		var role Role
+		var role RoleRow
 		if err := rows.Scan(&role.ID, &role.Name, &role.Description, &role.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan user role: %w", err)
 		}
 		roles = append(roles, role)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate user roles: %w", err)
+	}
 	return roles, nil
 }
 
 func (r *RolePGRepository) AssignToUser(ctx context.Context, roleID, userID uuid.UUID) error {
-	_, err := r.pool.Exec(ctx,
+	_, err := r.q(ctx).Exec(ctx,
 		`INSERT INTO user_roles (role_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
 		roleID, userID,
 	)
@@ -176,7 +210,7 @@ func (r *RolePGRepository) AssignToUser(ctx context.Context, roleID, userID uuid
 }
 
 func (r *RolePGRepository) RemoveFromUser(ctx context.Context, roleID, userID uuid.UUID) error {
-	_, err := r.pool.Exec(ctx,
+	_, err := r.q(ctx).Exec(ctx,
 		`DELETE FROM user_roles WHERE role_id = $1 AND user_id = $2`,
 		roleID, userID,
 	)
