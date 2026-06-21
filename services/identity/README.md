@@ -40,8 +40,8 @@ Common ones:
 - `just test-integration` — integration tests (requires db-up)
 - `just db-reset` — wipe and recreate the local database (requires `--confirm`)
 - `just migrate` / `just migrate-down` — apply or roll back one migration
-- `just gen-jwk` — generate a fresh Ed25519 JWK in `.env.local`
-- `just reset` — tear down everything (containers, build, .env.local)
+- `just gen-jwk` — generate a fresh Ed25519 JWK in `.env.local`; requires confirmation
+- `just reset` — tear down everything (containers, build, .env.local); requires confirmation
 - `just docker-up` — start the full stack (postgres + server) via Docker Compose
 
 ## Environment Variables

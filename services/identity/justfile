@@ -68,6 +68,7 @@ migrate-down:
 # --- Secrets ---
 
 # Generate a fresh Ed25519 JWK and write it to .env.local
+[confirm("This will overwrite the existing Ed25519 JWK in .env.local and invalidate all existing tokens. Continue?")]
 gen-jwk:
     just _go_run gen-jwk
 
