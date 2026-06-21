@@ -5,60 +5,44 @@ Identity service for the Omni Platform. Handles authentication, users, sessions,
 ## Prerequisites
 
 - Go 1.26+
-- PostgreSQL (user: `identity`, password: `identity`, db: `identity`, port: `5432`)
+- PostgreSQL (user: `identity`, password: `identity`, db: `identity`, port: `5432`) — easiest via `just db-up` (uses Docker)
+- [`just`](https://github.com/casey/just) (`brew install just` or `apt install just`)
 
 ## Setup
 
 ```bash
 go mod download
+cp .env.example .env.local  # not needed if you use `just gen-jwk`
+just db-up
+just migrate
+just gen-jwk   # writes a fresh Ed25519 JWK to .env.local
 ```
 
-Start PostgreSQL (via Docker Compose):
-
-```bash
-docker compose up -d identity-postgres
-```
-
-Generate an Ed25519 JWK key pair:
-
-```bash
-go run ./cmd/server gen-jwk
-```
-
-Or with Python:
-
-```bash
-python3 -c "
-import base64, json
-from cryptography.hazmat.primitives.asymmetric import ed25519
-from cryptography.hazmat.primitives import serialization
-key = ed25519.Ed25519PrivateKey.generate()
-pub = key.public_key()
-jwk = {
-    'kty': 'OKP', 'crv': 'Ed25519',
-    'd': base64.urlsafe_b64encode(key.private_bytes(encoding=serialization.Encoding.Raw, format=serialization.PrivateFormat.Raw, encryption_algorithm=serialization.NoEncryption())).decode().rstrip('='),
-    'x': base64.urlsafe_b64encode(pub.public_bytes(encoding=serialization.Encoding.Raw, format=serialization.PublicFormat.Raw)).decode().rstrip('='),
-}
-print(json.dumps(jwk))
-"
-```
+That's the full first-time setup.
 
 ## Run
 
 ```bash
-export IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK='{"kty":"OKP","crv":"Ed25519","d":"<seed>","x":"<pub>"}'
-go run ./cmd/server
+just dev
 ```
 
-Or build and run:
+The server starts on `http://localhost:8080`. Health check at `/healthz`. `just dev` brings up the database, runs migrations, and starts the server.
 
-```bash
-go build -trimpath -o server ./cmd/server
-export IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK='{"kty":"OKP","crv":"Ed25519","d":"<seed>","x":"<pub>"}'
-./server
-```
+## Recipes
 
-The server starts on `http://localhost:8080`. Health check at `/healthz`.
+The justfile is the single source of truth for local development. Run `just` (no args) to see all available recipes.
+
+Common ones:
+
+- `just dev` — full local stack (db + migrate + JWK + server)
+- `just ci` — run vet, test, build
+- `just test` — run all tests
+- `just test-integration` — integration tests (requires db-up)
+- `just db-reset` — wipe and recreate the local database (requires `--confirm`)
+- `just migrate` / `just migrate-down` — apply or roll back one migration
+- `just gen-jwk` — generate a fresh Ed25519 JWK in `.env.local`
+- `just reset` — tear down everything (containers, build, .env.local)
+- `just docker-up` — start the full stack (postgres + server) via Docker Compose
 
 ## Environment Variables
 
@@ -81,8 +65,8 @@ The server starts on `http://localhost:8080`. Health check at `/healthz`.
 ## Run with Docker Compose
 
 ```bash
-export IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK='{"kty":"OKP","crv":"Ed25519","d":"<seed>","x":"<pub>"}'
-docker compose up -d
+export IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK="$(just gen-jwk)"
+just docker-up
 ```
 
 This starts PostgreSQL, runs migrations, and starts the server on `:8080`.
