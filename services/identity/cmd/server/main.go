@@ -71,7 +71,13 @@ func main() {
 		),
 		fx.Invoke(
 			RunMigrations,
-			Serve,
+			fx.Annotate(Serve, fx.ParamTags(
+				``, ``,
+				``, ``,
+				``, ``,
+				`group:"grpc-handlers"`,
+				``, ``,
+			)),
 		),
 	).Run()
 }
@@ -99,12 +105,25 @@ func NewEmailSenderFromConfig(cfg shared.Config, logger *slog.Logger) shared.Ema
 	return shared.NewLogEmailSender(logger)
 }
 
-func NewDBPoolFromConfig(ctx context.Context, cfg shared.Config) (*pgxpool.Pool, error) {
-	return shared.NewDBPool(ctx, cfg.DB.DSN())
+func NewDBPoolFromConfig(lc fx.Lifecycle, cfg shared.Config) (*pgxpool.Pool, error) {
+	pool, err := pgxpool.New(context.Background(), cfg.DB.DSN())
+	if err != nil {
+		return nil, fmt.Errorf("create pool: %w", err)
+	}
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return pool.Ping(ctx)
+		},
+		OnStop: func(ctx context.Context) error {
+			pool.Close()
+			return nil
+		},
+	})
+	return pool, nil
 }
 
-func NewTracerProviderFromConfig(ctx context.Context, cfg shared.Config) (*sdktrace.TracerProvider, error) {
-	return shared.NewTracerProvider(ctx, cfg.OTEL.Endpoint)
+func NewTracerProviderFromConfig(cfg shared.Config) (*sdktrace.TracerProvider, error) {
+	return shared.NewTracerProvider(context.Background(), cfg.OTEL.Endpoint)
 }
 
 func RunMigrations(cfg shared.Config) error {
