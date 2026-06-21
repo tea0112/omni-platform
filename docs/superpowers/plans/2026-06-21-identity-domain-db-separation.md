@@ -295,7 +295,7 @@ git commit -m "refactor(identity): add identityuser package with shared User typ
 
 **Interfaces:**
 - Consumes: `identityuser.User` (from Task 2), `shared.Querier`, `shared.WithQuerier`, `shared.QuerierFromContext` (from Task 1)
-- Produces: `user.UserRepository` interface returning `*userRow`, `user.UserService` returning `*identityuser.User`
+- Produces: `user.UserRepository` interface returning `*UserRow`, `user.UserService` returning `*identityuser.User`
 
 - [ ] **Step 1: Read the current files to understand the existing structure**
 
@@ -346,12 +346,12 @@ import (
 //go:generate mockgen -destination=mocks/repo_mock.go -package=mocks . UserRepository
 
 type UserRepository interface {
-	GetByID(ctx context.Context, id uuid.UUID) (*userRow, error)
-	Update(ctx context.Context, id uuid.UUID, req UpdateUserRequest) (*userRow, error)
-	List(ctx context.Context, offset, limit int) ([]userRow, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*UserRow, error)
+	Update(ctx context.Context, id uuid.UUID, req UpdateUserRequest) (*UserRow, error)
+	List(ctx context.Context, offset, limit int) ([]UserRow, error)
 }
 
-type userRow struct {
+type UserRow struct {
 	ID            uuid.UUID
 	Email         string
 	DisplayName   string
@@ -360,7 +360,7 @@ type userRow struct {
 	UpdatedAt     time.Time
 }
 
-func (r userRow) toDomain() identityuser.User {
+func (r UserRow) toDomain() identityuser.User {
 	return identityuser.User{
 		ID:            r.ID,
 		Email:         r.Email,
@@ -388,8 +388,8 @@ func (r *UserPGRepository) q(ctx context.Context) shared.Querier {
 	return r.defaultQuerier
 }
 
-func (r *UserPGRepository) GetByID(ctx context.Context, id uuid.UUID) (*userRow, error) {
-	row := &userRow{}
+func (r *UserPGRepository) GetByID(ctx context.Context, id uuid.UUID) (*UserRow, error) {
+	row := &UserRow{}
 	err := r.q(ctx).QueryRow(ctx,
 		`SELECT id, email, display_name, email_verified, created_at, updated_at FROM users WHERE id = $1`, id,
 	).Scan(&row.ID, &row.Email, &row.DisplayName, &row.EmailVerified, &row.CreatedAt, &row.UpdatedAt)
@@ -402,7 +402,7 @@ func (r *UserPGRepository) GetByID(ctx context.Context, id uuid.UUID) (*userRow,
 	return row, nil
 }
 
-func (r *UserPGRepository) Update(ctx context.Context, id uuid.UUID, req UpdateUserRequest) (*userRow, error) {
+func (r *UserPGRepository) Update(ctx context.Context, id uuid.UUID, req UpdateUserRequest) (*UserRow, error) {
 	if req.DisplayName != nil {
 		_, err := r.q(ctx).Exec(ctx,
 			`UPDATE users SET display_name = $1, updated_at = now() WHERE id = $2`, *req.DisplayName, id)
@@ -413,7 +413,7 @@ func (r *UserPGRepository) Update(ctx context.Context, id uuid.UUID, req UpdateU
 	return r.GetByID(ctx, id)
 }
 
-func (r *UserPGRepository) List(ctx context.Context, offset, limit int) ([]userRow, error) {
+func (r *UserPGRepository) List(ctx context.Context, offset, limit int) ([]UserRow, error) {
 	rows, err := r.q(ctx).Query(ctx,
 		`SELECT id, email, display_name, email_verified, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		limit, offset,
@@ -423,9 +423,9 @@ func (r *UserPGRepository) List(ctx context.Context, offset, limit int) ([]userR
 	}
 	defer rows.Close()
 
-	var users []userRow
+	var users []UserRow
 	for rows.Next() {
-		var u userRow
+		var u UserRow
 		if err := rows.Scan(&u.ID, &u.Email, &u.DisplayName, &u.EmailVerified, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan user: %w", err)
 		}
@@ -708,7 +708,7 @@ func (h *UserGrpcHandler) ListUsers(ctx context.Context, req *connect.Request[id
 - [ ] **Step 7: Regenerate mocks**
 
 Run: `cd services/identity && go generate ./...`
-Expected: regenerates `internal/user/mocks/repo_mock.go` and any other mock files. The new mock returns `*userRow` instead of `*user`.
+Expected: regenerates `internal/user/mocks/repo_mock.go` and any other mock files. The new mock returns `*UserRow` instead of `*user`.
 
 - [ ] **Step 8: Build and check for errors**
 
@@ -754,7 +754,7 @@ This is the largest task. The approach:
 
 **Interfaces:**
 - Consumes: `identityuser.User` (from Task 2), `shared.Querier`, `shared.TxRunner` (from Task 1)
-- Produces: `auth.UserCredentials`, `auth.UserRepository` (returns `*userCredentialsRow`), `auth.SessionRepository` (returns `*sessionContextRow`), `auth.NewAuthService` accepting `shared.TxRunner`
+- Produces: `auth.UserCredentials`, `auth.UserRepository` (returns `*UserCredentialsRow`), `auth.SessionRepository` (returns `*SessionContextRow`), `auth.NewAuthService` accepting `shared.TxRunner`
 
 - [ ] **Step 1: Read all current auth files**
 
@@ -871,9 +871,9 @@ import (
 //go:generate mockgen -destination=mocks/repo_mock.go -package=mocks . UserRepository,SessionRepository
 
 type UserRepository interface {
-	Create(ctx context.Context, email, passwordHash string) (*userCredentialsRow, error)
-	GetByEmail(ctx context.Context, email string) (*userCredentialsRow, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*userCredentialsRow, error)
+	Create(ctx context.Context, email, passwordHash string) (*UserCredentialsRow, error)
+	GetByEmail(ctx context.Context, email string) (*UserCredentialsRow, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*UserCredentialsRow, error)
 	CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, token string, expiresAt time.Time) error
 	GetPasswordResetToken(ctx context.Context, token string) (userID uuid.UUID, expiresAt time.Time, usedAt *time.Time, err error)
 	MarkPasswordResetTokenUsed(ctx context.Context, token string) error
@@ -883,11 +883,11 @@ type UserRepository interface {
 }
 
 type SessionRepository interface {
-	CreateSession(ctx context.Context, userID uuid.UUID, refreshToken string, deviceInfo map[string]any, ipAddress string, expiresAt time.Time) (*sessionContextRow, error)
-	GetByRefreshToken(ctx context.Context, refreshToken string) (*sessionContextRow, error)
+	CreateSession(ctx context.Context, userID uuid.UUID, refreshToken string, deviceInfo map[string]any, ipAddress string, expiresAt time.Time) (*SessionContextRow, error)
+	GetByRefreshToken(ctx context.Context, refreshToken string) (*SessionContextRow, error)
 	Revoke(ctx context.Context, id uuid.UUID) error
 	RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
-	ListByUser(ctx context.Context, userID uuid.UUID) ([]sessionContextRow, error)
+	ListByUser(ctx context.Context, userID uuid.UUID) ([]SessionContextRow, error)
 }
 
 // AuthPGRepository implements both UserRepository and SessionRepository.
@@ -932,7 +932,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type userCredentialsRow struct {
+type UserCredentialsRow struct {
 	ID            uuid.UUID
 	Email         string
 	PasswordHash  string
@@ -942,7 +942,7 @@ type userCredentialsRow struct {
 	UpdatedAt     time.Time
 }
 
-func (r userCredentialsRow) toDomain() *UserCredentials {
+func (r UserCredentialsRow) toDomain() *UserCredentials {
 	return NewUserCredentials(
 		identityuser.User{
 			ID:            r.ID,
@@ -956,7 +956,7 @@ func (r userCredentialsRow) toDomain() *UserCredentials {
 	)
 }
 
-func (r *AuthPGRepository) Create(ctx context.Context, email, passwordHash string) (*userCredentialsRow, error) {
+func (r *AuthPGRepository) Create(ctx context.Context, email, passwordHash string) (*UserCredentialsRow, error) {
 	id := uuid.Must(uuid.NewV7())
 	_, err := r.q(ctx).Exec(ctx,
 		`INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)`,
@@ -968,8 +968,8 @@ func (r *AuthPGRepository) Create(ctx context.Context, email, passwordHash strin
 	return r.GetByID(ctx, id)
 }
 
-func (r *AuthPGRepository) GetByEmail(ctx context.Context, email string) (*userCredentialsRow, error) {
-	row := &userCredentialsRow{}
+func (r *AuthPGRepository) GetByEmail(ctx context.Context, email string) (*UserCredentialsRow, error) {
+	row := &UserCredentialsRow{}
 	err := r.q(ctx).QueryRow(ctx,
 		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at FROM users WHERE email = $1`,
 		email,
@@ -980,8 +980,8 @@ func (r *AuthPGRepository) GetByEmail(ctx context.Context, email string) (*userC
 	return row, nil
 }
 
-func (r *AuthPGRepository) GetByID(ctx context.Context, id uuid.UUID) (*userCredentialsRow, error) {
-	row := &userCredentialsRow{}
+func (r *AuthPGRepository) GetByID(ctx context.Context, id uuid.UUID) (*UserCredentialsRow, error) {
+	row := &UserCredentialsRow{}
 	err := r.q(ctx).QueryRow(ctx,
 		`SELECT id, email, password_hash, display_name, email_verified, created_at, updated_at FROM users WHERE id = $1`,
 		id,
@@ -1110,7 +1110,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type sessionContextRow struct {
+type SessionContextRow struct {
 	ID           uuid.UUID
 	UserID       uuid.UUID
 	RefreshToken string
@@ -1121,7 +1121,7 @@ type sessionContextRow struct {
 	CreatedAt    time.Time
 }
 
-func (r sessionContextRow) toSessionWithContext() (*SessionWithContext, error) {
+func (r SessionContextRow) toSessionWithContext() (*SessionWithContext, error) {
 	var device map[string]any
 	if len(r.DeviceInfo) > 0 {
 		if err := json.Unmarshal(r.DeviceInfo, &device); err != nil {
@@ -1140,7 +1140,7 @@ func (r sessionContextRow) toSessionWithContext() (*SessionWithContext, error) {
 	}, nil
 }
 
-func (r *AuthPGRepository) CreateSession(ctx context.Context, userID uuid.UUID, refreshToken string, deviceInfo map[string]any, ipAddress string, expiresAt time.Time) (*sessionContextRow, error) {
+func (r *AuthPGRepository) CreateSession(ctx context.Context, userID uuid.UUID, refreshToken string, deviceInfo map[string]any, ipAddress string, expiresAt time.Time) (*SessionContextRow, error) {
 	deviceJSON, _ := json.Marshal(deviceInfo)
 	id := uuid.Must(uuid.NewV7())
 	_, err := r.q(ctx).Exec(ctx,
@@ -1153,8 +1153,8 @@ func (r *AuthPGRepository) CreateSession(ctx context.Context, userID uuid.UUID, 
 	return r.GetByRefreshToken(ctx, refreshToken)
 }
 
-func (r *AuthPGRepository) GetByRefreshToken(ctx context.Context, refreshToken string) (*sessionContextRow, error) {
-	row := &sessionContextRow{}
+func (r *AuthPGRepository) GetByRefreshToken(ctx context.Context, refreshToken string) (*SessionContextRow, error) {
+	row := &SessionContextRow{}
 	var deviceJSON []byte
 	err := r.q(ctx).QueryRow(ctx,
 		`SELECT id, user_id, refresh_token, device_info, ip_address, expires_at, revoked_at, created_at FROM sessions WHERE refresh_token = $1`,
@@ -1183,7 +1183,7 @@ func (r *AuthPGRepository) RevokeAllForUser(ctx context.Context, userID uuid.UUI
 	return err
 }
 
-func (r *AuthPGRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]sessionContextRow, error) {
+func (r *AuthPGRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]SessionContextRow, error) {
 	rows, err := r.q(ctx).Query(ctx,
 		`SELECT id, user_id, refresh_token, device_info, ip_address, expires_at, revoked_at, created_at FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC`,
 		userID,
@@ -1193,9 +1193,9 @@ func (r *AuthPGRepository) ListByUser(ctx context.Context, userID uuid.UUID) ([]
 	}
 	defer rows.Close()
 
-	var sessions []sessionContextRow
+	var sessions []SessionContextRow
 	for rows.Next() {
-		var s sessionContextRow
+		var s SessionContextRow
 		var deviceJSON []byte
 		if err := rows.Scan(&s.ID, &s.UserID, &s.RefreshToken, &deviceJSON, &s.IPAddress, &s.ExpiresAt, &s.RevokedAt, &s.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan session: %w", err)
@@ -1547,7 +1547,7 @@ git commit -m "refactor(identity): separate domain and row types in auth module"
 
 **Interfaces:**
 - Consumes: `shared.Querier`, `shared.WithQuerier`, `shared.QuerierFromContext` (from Task 1)
-- Produces: `session.SessionRepository` returning `[]sessionRow`, `session.NewSessionPGRepository(pool)` constructor
+- Produces: `session.SessionRepository` returning `[]SessionRow`, `session.NewSessionPGRepository(pool)` constructor
 
 - [ ] **Step 1: Read current files**
 
@@ -1596,12 +1596,12 @@ import (
 //go:generate mockgen -destination=mocks/repo_mock.go -package=mocks . SessionRepository
 
 type SessionRepository interface {
-	GetByUserID(ctx context.Context, userID uuid.UUID) ([]sessionRow, error)
+	GetByUserID(ctx context.Context, userID uuid.UUID) ([]SessionRow, error)
 	Revoke(ctx context.Context, id uuid.UUID) error
 	RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
 }
 
-type sessionRow struct {
+type SessionRow struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
 	ExpiresAt time.Time
@@ -1609,7 +1609,7 @@ type sessionRow struct {
 	CreatedAt time.Time
 }
 
-func (r sessionRow) toDomain() Session {
+func (r SessionRow) toDomain() Session {
 	return Session{
 		ID:        r.ID,
 		UserID:    r.UserID,
@@ -1636,7 +1636,7 @@ func (r *SessionPGRepository) q(ctx context.Context) shared.Querier {
 	return r.defaultQuerier
 }
 
-func (r *SessionPGRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]sessionRow, error) {
+func (r *SessionPGRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]SessionRow, error) {
 	rows, err := r.q(ctx).Query(ctx,
 		`SELECT id, user_id, expires_at, revoked_at, created_at FROM sessions WHERE user_id = $1 AND revoked_at IS NULL ORDER BY created_at DESC`, userID,
 	)
@@ -1644,9 +1644,9 @@ func (r *SessionPGRepository) GetByUserID(ctx context.Context, userID uuid.UUID)
 		return nil, fmt.Errorf("get sessions: %w", err)
 	}
 	defer rows.Close()
-	var sessions []sessionRow
+	var sessions []SessionRow
 	for rows.Next() {
-		var s sessionRow
+		var s SessionRow
 		if err := rows.Scan(&s.ID, &s.UserID, &s.ExpiresAt, &s.RevokedAt, &s.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan session: %w", err)
 		}
@@ -1764,7 +1764,7 @@ git commit -m "refactor(identity): separate domain and row types in session modu
 
 **Interfaces:**
 - Consumes: `shared.Querier`, `shared.WithQuerier`, `shared.QuerierFromContext` (from Task 1)
-- Produces: `role.RoleRepository` returning `*roleRow`, `role.NewRolePGRepository(pool)` constructor
+- Produces: `role.RoleRepository` returning `*RoleRow`, `role.NewRolePGRepository(pool)` constructor
 
 - [ ] **Step 1: Read current files**
 
@@ -1808,11 +1808,11 @@ No `json` tags on any field.
 - [ ] **Step 3: Rewrite `internal/role/repo.go`**
 
 Follow the same pattern as `internal/user/repo.go` (Task 3) and `internal/session/repo.go` (Task 5):
-- `roleRow` struct with the same fields as `Role` but used as the row type
-- `(r roleRow) toDomain() Role` conversion method
+- `RoleRow` struct with the same fields as `Role` but used as the row type
+- `(r RoleRow) toDomain() Role` conversion method
 - `RolePGRepository` with `defaultQuerier` field and `q(ctx)` helper
 - `NewRolePGRepository(pool *pgxpool.Pool) *RolePGRepository`
-- All `RoleRepository` interface methods return `*roleRow` or `[]roleRow`
+- All `RoleRepository` interface methods return `*RoleRow` or `[]RoleRow`
 - `GetPermissions` continues to return `[]string` (single-column query, no row wrapper)
 - All SQL uses `r.q(ctx).Query(...)` / `r.q(ctx).Exec(...)` / `r.q(ctx).QueryRow(...)`
 - Translate `pgx.ErrNoRows` to `shared.ErrNotFound`
@@ -2022,6 +2022,6 @@ After writing this plan, verify against the spec:
 - [ ] Spec goal "Service layer has zero knowledge of pgx" → Task 4 sub-step "Check for accidental pgx imports" enforces this; `service.go` files don't import pgx.
 - [ ] Spec goal "Modules can be split" → The `identityuser` package is its own package with no upstream imports. Documented in the spec's "Splitting the service" future-work note.
 - [ ] No placeholders: every step has full code or a clear action with verification.
-- [ ] Type names consistent across tasks: `userRow` (user), `userCredentialsRow` (auth), `sessionRow` (session), `sessionContextRow` (auth session), `roleRow` (role).
+- [ ] Type names consistent across tasks: `UserRow` (user), `UserCredentialsRow` (auth), `SessionRow` (session), `SessionContextRow` (auth session), `RoleRow` (role).
 - [ ] Conversion methods consistent: `row.toDomain()` everywhere.
 - [ ] `pgxTxRunner.RunInTx` is the only place that starts a tx and calls `WithQuerier`.

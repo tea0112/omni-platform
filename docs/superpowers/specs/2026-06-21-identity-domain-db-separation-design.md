@@ -48,7 +48,7 @@ internal/
   user/
     domain.go                   # UpdateUserRequest (no User, no json tags)
     handler.go / grpc.go        # DTOs with json tags, mapped to/from domain
-    repo.go                     # userRow + interface returning userRow
+    repo.go                     # UserRow + interface returning UserRow
     service.go                  # converts row → domain, RBAC
   auth/
     domain.go                   # UserCredentials, AuthResult, Credentials,
@@ -56,18 +56,18 @@ internal/
                                 # PasswordResetToken, SessionContext
     handler_*.go / grpc.go
     repo.go                     # interfaces
-    repo_user.go                # userCredentialsRow + UserCredentials mapping
-    repo_session.go             # sessionContextRow + (Session, SessionContext) mapping
+    repo_user.go                # UserCredentialsRow + UserCredentials mapping
+    repo_session.go             # SessionContextRow + (Session, SessionContext) mapping
     service.go / service_*.go   # business logic, uses txr where needed
   session/
     domain.go                   # Session (pure, no DeviceInfo/IP/RefreshToken)
     handler.go / grpc.go
-    repo.go                     # sessionRow
+    repo.go                     # SessionRow
     service.go
   role/
     domain.go                   # Role + request types (no json tags)
     handler.go / grpc.go
-    repo.go                     # roleRow
+    repo.go                     # RoleRow
     service.go
   shared/
     querier.go                  # NEW: Querier interface, WithQuerier,
@@ -208,7 +208,7 @@ type SessionWithContext struct {
 }
 ```
 
-The auth session repo returns `*sessionContextRow`; the session repo returns `*sessionRow`. The two rows map to the same DB table; the auth row reads more columns. The service composes the auth's row via `row.toSession()` (lifecycle) and `row.toContext()` (auth-flow fields), then assembles a `SessionWithContext` if both are needed.
+The auth session repo returns `*SessionContextRow`; the session repo returns `*SessionRow`. The two rows map to the same DB table; the auth row reads more columns. The service composes the auth's row via `row.toSession()` (lifecycle) and `row.toContext()` (auth-flow fields), then assembles a `SessionWithContext` if both are needed.
 
 ### `role.Role` (pure)
 
@@ -225,13 +225,13 @@ type Role struct {
 
 ## Row Types and Conversion
 
-### Row Types (Unexported, in `repo.go`)
+### Row Types (Exported, in `repo.go`)
 
-Each module defines its row type in the same file as the repository implementation. Rows are unexported; only the package's repository code references them.
+Each module defines its row type in the same file as the repository implementation. **Row types are exported** (e.g., `UserRow`, `RoleRow`) because the existing `mockgen` workflow generates mocks in a separate `mocks/` subpackage and Go's visibility rules prevent cross-package access to unexported types. The row type is still a "row-shape" data type, not a domain type — service callers convert it via `row.toDomain()` before exposing it upstream. Consumers should not depend on the row type's field set; treat it as opaque persistence detail even though it's technically exported.
 
 ```go
 // internal/user/repo.go
-type userRow struct {
+type UserRow struct {
     ID            uuid.UUID
     Email         string
     DisplayName   string
@@ -241,7 +241,7 @@ type userRow struct {
 }
 
 // internal/auth/repo_user.go
-type userCredentialsRow struct {
+type UserCredentialsRow struct {
     ID            uuid.UUID
     Email         string
     PasswordHash  string
@@ -252,7 +252,7 @@ type userCredentialsRow struct {
 }
 
 // internal/session/repo.go
-type sessionRow struct {
+type SessionRow struct {
     ID        uuid.UUID
     UserID    uuid.UUID
     ExpiresAt time.Time
@@ -261,7 +261,7 @@ type sessionRow struct {
 }
 
 // internal/auth/repo_session.go
-type sessionContextRow struct {
+type SessionContextRow struct {
     ID           uuid.UUID
     UserID       uuid.UUID
     RefreshToken string
@@ -273,7 +273,7 @@ type sessionContextRow struct {
 }
 
 // internal/role/repo.go
-type roleRow struct {
+type RoleRow struct {
     ID          uuid.UUID
     Name        string
     Description string
@@ -286,12 +286,12 @@ type roleRow struct {
 Each row type has a `toDomain()` method that returns the corresponding domain type:
 
 ```go
-func (r userRow) toDomain() identityuser.User             { ... }
-func (r userCredentialsRow) toDomain() UserCredentials    { ... }
-func (r sessionRow) toDomain() session.Session            { ... }
-func (r sessionContextRow) toSession() session.Session    { ... }
-func (r sessionContextRow) toContext() SessionContext     { ... }
-func (r roleRow) toDomain() Role                          { ... }
+func (r UserRow) toDomain() identityuser.User             { ... }
+func (r UserCredentialsRow) toDomain() UserCredentials    { ... }
+func (r SessionRow) toDomain() session.Session            { ... }
+func (r SessionContextRow) toSession() session.Session    { ... }
+func (r SessionContextRow) toContext() SessionContext     { ... }
+func (r RoleRow) toDomain() Role                          { ... }
 ```
 
 Insert-side conversions live as `fromDomain(...)` functions or methods in `repo.go`, used for the few `Create` operations that take a domain value and produce a row.
@@ -303,38 +303,38 @@ Each method returns the row type (or a slice of row types). No `Querier` paramet
 ```go
 // user module
 type UserRepository interface {
-    GetByID(ctx context.Context, id uuid.UUID) (*userRow, error)
-    Update(ctx context.Context, id uuid.UUID, req UpdateUserRequest) (*userRow, error)
-    List(ctx context.Context, offset, limit int) ([]userRow, error)
+    GetByID(ctx context.Context, id uuid.UUID) (*UserRow, error)
+    Update(ctx context.Context, id uuid.UUID, req UpdateUserRequest) (*UserRow, error)
+    List(ctx context.Context, offset, limit int) ([]UserRow, error)
 }
 
 // session module
 type SessionRepository interface {
-    GetByUserID(ctx context.Context, userID uuid.UUID) ([]sessionRow, error)
+    GetByUserID(ctx context.Context, userID uuid.UUID) ([]SessionRow, error)
     Revoke(ctx context.Context, id uuid.UUID) error
     RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
 }
 
 // auth module — auth's session repo reads more columns (refresh token, device, IP)
 type SessionRepository interface {
-    CreateSession(ctx context.Context, userID uuid.UUID, refreshToken string, deviceInfo map[string]any, ipAddress string, expiresAt time.Time) (*sessionContextRow, error)
-    GetByRefreshToken(ctx context.Context, refreshToken string) (*sessionContextRow, error)
+    CreateSession(ctx context.Context, userID uuid.UUID, refreshToken string, deviceInfo map[string]any, ipAddress string, expiresAt time.Time) (*SessionContextRow, error)
+    GetByRefreshToken(ctx context.Context, refreshToken string) (*SessionContextRow, error)
     Revoke(ctx context.Context, id uuid.UUID) error
     RevokeAllForUser(ctx context.Context, userID uuid.UUID) error
-    ListByUser(ctx context.Context, userID uuid.UUID) ([]sessionContextRow, error)
+    ListByUser(ctx context.Context, userID uuid.UUID) ([]SessionContextRow, error)
 }
 
 // role module
 type RoleRepository interface {
-    Create(ctx context.Context, req CreateRoleRequest) (*roleRow, error)
-    GetByID(ctx context.Context, id uuid.UUID) (*roleRow, error)
-    List(ctx context.Context) ([]roleRow, error)
-    Update(ctx context.Context, id uuid.UUID, req UpdateRoleRequest) (*roleRow, error)
+    Create(ctx context.Context, req CreateRoleRequest) (*RoleRow, error)
+    GetByID(ctx context.Context, id uuid.UUID) (*RoleRow, error)
+    List(ctx context.Context) ([]RoleRow, error)
+    Update(ctx context.Context, id uuid.UUID, req UpdateRoleRequest) (*RoleRow, error)
     Delete(ctx context.Context, id uuid.UUID) error
     AddPermission(ctx context.Context, roleID uuid.UUID, permission string) error
     RemovePermission(ctx context.Context, roleID uuid.UUID, permission string) error
     GetPermissions(ctx context.Context, roleID uuid.UUID) ([]string, error)
-    GetUserRoles(ctx context.Context, userID uuid.UUID) ([]roleRow, error)
+    GetUserRoles(ctx context.Context, userID uuid.UUID) ([]RoleRow, error)
     AssignToUser(ctx context.Context, roleID, userID uuid.UUID) error
     RemoveFromUser(ctx context.Context, roleID, userID uuid.UUID) error
 }
@@ -410,8 +410,8 @@ func (r *UserPGRepository) q(ctx context.Context) Querier {
     return r.defaultQuerier
 }
 
-func (r *UserPGRepository) GetByID(ctx context.Context, id uuid.UUID) (*userRow, error) {
-    row := &userRow{}
+func (r *UserPGRepository) GetByID(ctx context.Context, id uuid.UUID) (*UserRow, error) {
+    row := &UserRow{}
     err := r.q(ctx).QueryRow(ctx, `SELECT id, email, display_name, email_verified, created_at, updated_at FROM users WHERE id = $1`, id).
         Scan(&row.ID, &row.Email, &row.DisplayName, &row.EmailVerified, &row.CreatedAt, &row.UpdatedAt)
     if err != nil {
@@ -445,8 +445,8 @@ When wiring a service that doesn't need transactions, the `txr` field is omitted
 1. **Mux** dispatches to `userHandler.GetByID(w, r)`.
 2. **Auth middleware** (`shared.Authenticate`) parses the JWT, attaches `Principal` to `ctx`.
 3. **Handler** parses the path param, calls `h.svc.GetByID(r.Context(), id)`.
-4. **Service** checks RBAC, calls `s.repo.GetByID(ctx, id)`, converts the returned `*userRow` to `*identityuser.User` via `row.toDomain()`.
-5. **Repository** looks up the querier from `ctx` (no tx → uses the default pool), runs the SELECT, returns `*userRow`.
+4. **Service** checks RBAC, calls `s.repo.GetByID(ctx, id)`, converts the returned `*UserRow` to `*identityuser.User` via `row.toDomain()`.
+5. **Repository** looks up the querier from `ctx` (no tx → uses the default pool), runs the SELECT, returns `*UserRow`.
 6. **Handler** maps `*identityuser.User` to a `userResponse` DTO (with json tags), writes the JSON response.
 
 ### gRPC Request: equivalent for `GetUser`
@@ -545,7 +545,7 @@ The JSON wire format is identical to today's output.
 ### Tier 1: Service Unit Tests with Mocks
 
 - `go.uber.org/mock/gomock` for repository mocks.
-- Mocks return row types (e.g., `*userRow`, `*userCredentialsRow`).
+- Mocks return row types (e.g., `*UserRow`, `*UserCredentialsRow`).
 - Tests verify row → domain conversion and business logic.
 - For services that use `TxRunner` (none in this refactor), a `fakeTxRunner` is used:
 
@@ -619,7 +619,7 @@ func TestUserPGRepository_FallsBackToDefault(t *testing.T) {
 | File | Change |
 |---|---|
 | `domain.go` | Remove `User`. Keep `UpdateUserRequest` (no json tags). |
-| `repo.go` | Add unexported `userRow` and `(r userRow) toDomain() identityuser.User`. Add `defaultQuerier Querier` field. Add `q(ctx)` helper. Update `UserRepository` interface to return `*userRow`. Update pgx methods to use `r.q(ctx)`. |
+| `repo.go` | Add `UserRow` (exported, see "Row Types" rationale) and `(r UserRow) toDomain() identityuser.User`. Add `defaultQuerier Querier` field. Add `q(ctx)` helper. Update `UserRepository` interface to return `*UserRow`. Update pgx methods to use `r.q(ctx)`. |
 | `service.go` | After each repo call, call `row.toDomain()`. Return `*identityuser.User` (not `*User`). |
 | `handler.go` | Add inline DTOs (`userResponse`, `listUsersResponse`, `updateUserRequestDTO`) with json tags. Handler maps DTO ↔ domain. |
 | `grpc.go` | Build protobuf responses from `*identityuser.User`. |
@@ -630,9 +630,9 @@ func TestUserPGRepository_FallsBackToDefault(t *testing.T) {
 | File | Change |
 |---|---|
 | `domain.go` | Remove `User`, `Session`. Add `UserCredentials`. Add `SessionContext`, `SessionWithContext`. Keep `AuthResult` (uses `identityuser.User`), `Credentials`, `ChangePasswordInput`, `ChangeEmailInput`, `PasswordResetToken`. |
-| `repo.go` | Update interfaces to return `*userCredentialsRow` (User repo) and `*sessionContextRow` (Session repo). Add `defaultQuerier` field and `q(ctx)` helper. |
-| `repo_user.go` | Rename current `User` references to `userCredentialsRow`. Add `(r userCredentialsRow) toDomain() UserCredentials`. |
-| `repo_session.go` | Add unexported `sessionContextRow` (with `RefreshToken`, `DeviceInfo []byte`, `IPAddress`). Add `toSession()` and `toContext()` methods returning `session.Session` and `SessionContext`. |
+| `repo.go` | Update interfaces to return `*UserCredentialsRow` (User repo) and `*SessionContextRow` (Session repo). Add `defaultQuerier` field and `q(ctx)` helper. |
+| `repo_user.go` | Rename current `User` references to `UserCredentialsRow`. Add `(r UserCredentialsRow) toDomain() UserCredentials`. |
+| `repo_session.go` | Add `SessionContextRow` (exported) with `RefreshToken`, `DeviceInfo []byte`, `IPAddress`. Add `toSession()` and `toContext()` methods returning `session.Session` and `SessionContext`. |
 | `service.go` | Add `txr shared.TxRunner` field to the struct (stored but unused in this refactor; follow-up work will use it). Update constructor signature to accept it. |
 | `service_register.go`, `service_login.go` | Document intended `RunInTx` usage in code comments. Do not wire in this refactor. |
 | `service_change_password.go`, `service_change_email.go`, `service_forgot_password.go`, `service_refresh.go`, `service_reset_password.go`, `service_logout.go` | Update conversions. |
@@ -647,7 +647,7 @@ func TestUserPGRepository_FallsBackToDefault(t *testing.T) {
 | File | Change |
 |---|---|
 | `domain.go` | Pure `Session` (no `DeviceInfo`/`IPAddress`/`RefreshToken`). |
-| `repo.go` | Add `sessionRow`, return rows. |
+| `repo.go` | Add `SessionRow`, return rows. |
 | `service.go` | Convert rows. |
 | `handler.go`, `grpc.go` | DTOs. |
 | `mocks/repo_mock.go` | Regenerated. |
@@ -657,7 +657,7 @@ func TestUserPGRepository_FallsBackToDefault(t *testing.T) {
 | File | Change |
 |---|---|
 | `domain.go` | Keep `Role` and request types — drop json tags. |
-| `repo.go` | Add `roleRow`, return rows. |
+| `repo.go` | Add `RoleRow`, return rows. |
 | `service.go` | Convert. |
 | `handler.go`, `grpc.go` | DTOs. |
 | `mocks/repo_mock.go` | Regenerated. |
@@ -708,7 +708,7 @@ The following are deliberately not part of this refactor; the design supports th
 | Service accidentally importing pgx | Code review and `go vet` checks. The `txr` field type is `shared.TxRunner` (interface), not `*pgxpool.Pool`. |
 | Mocks out of sync with interfaces | `go generate ./...` is part of the verification step. CI runs it. |
 | Cross-module import direction inverted | Documented in this spec; code review. `goimports` and `go vet` don't catch it; a custom lint rule could be added later. |
-| `DeviceInfo` JSONB shape change | The `[]byte` field on `sessionContextRow` and the unmarshal in `toContext()` isolate the JSON shape. Changing the DB column shape is a single-file change. |
+| `DeviceInfo` JSONB shape change | The `[]byte` field on `SessionContextRow` and the unmarshal in `toContext()` isolate the JSON shape. Changing the DB column shape is a single-file change. |
 
 ## File Summary
 
