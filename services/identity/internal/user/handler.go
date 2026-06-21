@@ -30,7 +30,7 @@ type userResponse struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
-func toUserResponse(u *identityuser.User) userResponse {
+func toUserResponse(u identityuser.User) userResponse {
 	return userResponse{
 		ID:            u.ID,
 		Email:         u.Email,
@@ -66,7 +66,7 @@ func (h *Handler) GetByID(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, toUserResponse(u))
+	shared.WriteJSON(w, http.StatusOK, toUserResponse(*u))
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +85,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, toUserResponse(u))
+	shared.WriteJSON(w, http.StatusOK, toUserResponse(*u))
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
@@ -101,7 +101,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := make([]userResponse, len(users))
 	for i, u := range users {
-		resp[i] = toUserResponse(&u)
+		resp[i] = toUserResponse(u)
 	}
 	shared.WriteJSON(w, http.StatusOK, resp)
 }
