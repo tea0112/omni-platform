@@ -103,7 +103,7 @@ func runGenJwk() int {
 		fmt.Fprintf(os.Stderr, "gen-jwk: %v\n", err)
 		return 1
 	}
-	if err := os.WriteFile(".env.local", []byte("IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK="+jwk+"\n"), 0o600); err != nil {
+	if err := os.WriteFile(".env.local", []byte("IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK='"+jwk+"'\n"), 0o600); err != nil {
 		fmt.Fprintf(os.Stderr, "gen-jwk: write .env.local: %v\n", err)
 		return 1
 	}

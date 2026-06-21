@@ -2,6 +2,7 @@
 # Run `just` (no args) to see all available recipes.
 
 set dotenv-load := true
+set dotenv-filename := '.env.local'
 set positional-arguments := true
 
 # Variables
