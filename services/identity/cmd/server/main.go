@@ -16,6 +16,8 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/tea0112/omni-platform/services/identity/internal/auth"
+	"github.com/tea0112/omni-platform/services/identity/internal/genkey"
+	"github.com/tea0112/omni-platform/services/identity/internal/migrate"
 	"github.com/tea0112/omni-platform/services/identity/internal/role"
 	"github.com/tea0112/omni-platform/services/identity/internal/session"
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
@@ -29,6 +31,18 @@ type GrpcHandlerPair struct {
 }
 
 func main() {
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "gen-jwk":
+			os.Exit(runGenJwk())
+		case "migrate":
+			args := []string{}
+			if len(os.Args) > 2 {
+				args = os.Args[2:]
+			}
+			os.Exit(runMigrate(args))
+		}
+	}
 	fx.New(
 		fx.Provide(
 			shared.MustLoad,
@@ -81,6 +95,42 @@ func main() {
 			)),
 		),
 	).Run()
+}
+
+func runGenJwk() int {
+	jwk, err := genkey.Generate()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "gen-jwk: %v\n", err)
+		return 1
+	}
+	if err := os.WriteFile(".env.local", []byte("IDENTITY_AUTH_JWT_PRIVATE_KEY_JWK="+jwk+"\n"), 0o600); err != nil {
+		fmt.Fprintf(os.Stderr, "gen-jwk: write .env.local: %v\n", err)
+		return 1
+	}
+	fmt.Println("wrote .env.local with a fresh Ed25519 JWK")
+	return 0
+}
+
+func runMigrate(args []string) (code int) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Fprintf(os.Stderr, "migrate: load config: %v\n", r)
+			code = 1
+		}
+	}()
+	cfg := shared.MustLoad()
+	dbURL := cfg.DB.DSN()
+	var err error
+	if len(args) > 0 && args[0] == "down" {
+		err = migrate.Down(dbURL)
+	} else {
+		err = migrate.Run(dbURL)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "migrate: %v\n", err)
+		return 1
+	}
+	return 0
 }
 
 func NewLogger() *slog.Logger {
