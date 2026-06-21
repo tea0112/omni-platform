@@ -22,6 +22,8 @@ func Down(dbURL string) error {
 	if err != nil {
 		return fmt.Errorf("migrate down: new instance: %w", err)
 	}
+	defer m.Close()
+
 	if err := m.Steps(-1); err != nil && err != migrate_lib.ErrNoChange {
 		return fmt.Errorf("migrate down: %w", err)
 	}
