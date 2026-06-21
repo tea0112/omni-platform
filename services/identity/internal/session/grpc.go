@@ -28,7 +28,7 @@ func (h *SessionGrpcHandler) ListSessions(ctx context.Context, req *connect.Requ
 	if err != nil {
 		return nil, shared.AsConnectError(&shared.ValidationError{Fields: map[string]string{"user_id": "invalid uuid"}})
 	}
-	sessions, err := h.svc.List(ctx, userID)
+	sessions, err := h.svc.ListByUser(ctx, userID)
 	if err != nil {
 		return nil, shared.AsConnectError(err)
 	}
@@ -37,7 +37,6 @@ func (h *SessionGrpcHandler) ListSessions(ctx context.Context, req *connect.Requ
 		resp.Sessions = append(resp.Sessions, &identityv1.SessionInfo{
 			SessionId: s.ID.String(),
 			UserId:    s.UserID.String(),
-			IpAddress: s.IPAddress,
 			ExpiresAt: s.ExpiresAt.Unix(),
 			CreatedAt: s.CreatedAt.Unix(),
 		})

@@ -2,9 +2,11 @@ package session
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+
 	"github.com/tea0112/omni-platform/services/identity/internal/shared"
 )
 
@@ -14,6 +16,24 @@ type Handler struct {
 
 func NewHandler(svc *SessionService) *Handler {
 	return &Handler{svc: svc}
+}
+
+type sessionResponse struct {
+	ID        uuid.UUID  `json:"id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	RevokedAt *time.Time `json:"revoked_at,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+}
+
+func toSessionResponse(s Session) sessionResponse {
+	return sessionResponse{
+		ID:        s.ID,
+		UserID:    s.UserID,
+		ExpiresAt: s.ExpiresAt,
+		RevokedAt: s.RevokedAt,
+		CreatedAt: s.CreatedAt,
+	}
 }
 
 func (h *Handler) RegisterRoutes(r chi.Router) {
@@ -28,12 +48,16 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, &shared.ValidationError{Fields: map[string]string{"userID": "invalid uuid"}})
 		return
 	}
-	sessions, err := h.svc.List(r.Context(), userID)
+	sessions, err := h.svc.ListByUser(r.Context(), userID)
 	if err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
-	shared.WriteJSON(w, http.StatusOK, sessions)
+	resp := make([]sessionResponse, len(sessions))
+	for i, s := range sessions {
+		resp[i] = toSessionResponse(s)
+	}
+	shared.WriteJSON(w, http.StatusOK, resp)
 }
 
 func (h *Handler) Revoke(w http.ResponseWriter, r *http.Request) {
@@ -55,11 +79,9 @@ func (h *Handler) RevokeAll(w http.ResponseWriter, r *http.Request) {
 		shared.WriteErr(w, &shared.ValidationError{Fields: map[string]string{"userID": "invalid uuid"}})
 		return
 	}
-	if err := h.svc.RevokeAll(r.Context(), userID); err != nil {
+	if err := h.svc.RevokeAllForUser(r.Context(), userID); err != nil {
 		shared.WriteErr(w, err)
 		return
 	}
 	shared.WriteJSON(w, http.StatusOK, map[string]string{"message": "all sessions revoked"})
 }
-
-

@@ -43,10 +43,10 @@ func (m *MockSessionRepository) EXPECT() *MockSessionRepositoryMockRecorder {
 }
 
 // GetByUserID mocks base method.
-func (m *MockSessionRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]session.Session, error) {
+func (m *MockSessionRepository) GetByUserID(ctx context.Context, userID uuid.UUID) ([]session.SessionRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByUserID", ctx, userID)
-	ret0, _ := ret[0].([]session.Session)
+	ret0, _ := ret[0].([]session.SessionRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
