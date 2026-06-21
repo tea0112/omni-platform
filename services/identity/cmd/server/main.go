@@ -111,16 +111,22 @@ func runGenJwk() int {
 	return 0
 }
 
-func runMigrate(args []string) (code int) {
+func loadMigrateConfig() (cfg shared.Config, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "migrate: load config: %v\n", r)
-			code = 1
+			err = fmt.Errorf("load config: %v", r)
 		}
 	}()
-	cfg := shared.MustLoad()
+	return shared.MustLoad(), nil
+}
+
+func runMigrate(args []string) int {
+	cfg, err := loadMigrateConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return 1
+	}
 	dbURL := cfg.DB.DSN()
-	var err error
 	if len(args) > 0 && args[0] == "down" {
 		err = migrate.Down(dbURL)
 	} else {
